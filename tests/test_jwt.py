@@ -9,6 +9,7 @@ import jwt
 import pytest
 
 from componentsdb.app import jwt_encode, jwt_decode, _jwt_encode_dangerous
+from componentsdb.auth import verify_user_token, current_user
 from componentsdb.model import User
 
 @contextmanager
@@ -61,4 +62,12 @@ def test_user_token(user):
     t = user.token
     id = User.decode_token(t)
     assert id == user.id
+
+def test_verify_user_token(user):
+    """Verifying the current token should set current_user."""
+    # NB: not "is None" since current_user is a proxy
+    assert current_user == None
+    t = user.token
+    verify_user_token(t)
+    assert current_user.id == user.id
 
