@@ -1,5 +1,8 @@
 # requirements for test suite
 alembic
+mixer
 psycopg2
 pytest
+pytest-capturelog
+pytest-flask
 sqlalchemy
