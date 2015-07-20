@@ -41,3 +41,8 @@ def mixer(app, db):
     mixer.register(User, name=faker.name)
 
     return mixer
+
+@pytest.fixture(scope='module')
+def user(mixer):
+    """A fake test user."""
+    return mixer.blend(User)
