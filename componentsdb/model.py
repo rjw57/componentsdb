@@ -5,7 +5,7 @@ SQLAlchemy models for the database.
 import base64
 import json
 
-from componentsdb.app import db
+from componentsdb.app import db, jwt_encode, jwt_decode
 
 class _MixinWithId(object):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,9 +61,15 @@ class User(db.Model, _MixinsCommon, _MixinEncodable):
     __tablename__ = 'users'
     name = db.Column(db.Text, nullable=False)
 
+    @property
     def token(self):
         """Return a JWT with this user as a claim."""
-        raise NotImplemented()
+        return jwt_encode(dict(user=self.id))
+
+    @classmethod
+    def decode_token(self, t):
+        p = jwt_decode(t)
+        return int(p['user'])
 
 Permission = db.Enum('create', 'read', 'update', 'delete')
 

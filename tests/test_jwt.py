@@ -9,6 +9,7 @@ import jwt
 import pytest
 
 from componentsdb.app import jwt_encode, jwt_decode, _jwt_encode_dangerous
+from componentsdb.model import User
 
 @contextmanager
 def secret(app, new_secret):
@@ -54,3 +55,10 @@ def test_verify_exp_present(app):
     t = _jwt_encode_dangerous(payload)
     with pytest.raises(jwt.exceptions.MissingRequiredClaimError):
         jwt_decode(t)
+
+def test_user_token(user):
+    """Users should be able to create tokens which refer to themselves."""
+    t = user.token
+    id = User.decode_token(t)
+    assert id == user.id
+
