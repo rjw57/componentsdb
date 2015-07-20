@@ -20,7 +20,8 @@ def upgrade():
     # Create tables
     op.create_table(
         'components',
-        sa.Column('id', sa.Integer, primary_key=True, unique=True, nullable=False),
+        sa.Column('id', sa.Integer, primary_key=True, unique=True,
+            nullable=False),
         sa.Column('code', sa.Text),
         sa.Column('description', sa.Text),
         sa.Column('datasheet_url', sa.Text),
@@ -32,8 +33,9 @@ def upgrade():
 
     op.create_table(
         'users',
-        sa.Column('id', sa.Integer, primary_key=True, unique=True, nullable=False),
-        sa.Column('name', sa.Text),
+        sa.Column('id', sa.Integer, primary_key=True, unique=True,
+            nullable=False),
+        sa.Column('name', sa.Text, nullable=False),
         sa.Column('created_at', sa.DateTime, nullable=False,
             server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.Column('updated_at', sa.DateTime, nullable=False,
