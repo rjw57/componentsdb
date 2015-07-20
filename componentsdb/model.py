@@ -5,10 +5,7 @@ SQLAlchemy models for the database.
 import base64
 import json
 
-from sqlalchemy.ext.declarative import DeferredReflection
-from flask.ext.sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
+from componentsdb.app import db
 
 class _MixinWithId(object):
     id = db.Column(db.Integer, primary_key=True)

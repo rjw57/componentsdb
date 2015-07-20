@@ -3,7 +3,6 @@ setuptools
 
 # requirements for development
 alembic
-flask-script
 
 # requirements for testing
 tox

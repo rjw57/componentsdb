@@ -7,9 +7,9 @@ import pytest
 from faker import Faker
 from mixer.backend.flask import Mixer
 
-from componentsdb.app import create_app
+from componentsdb.app import create_app, db as _db
 from componentsdb.model import (
-    db as _db, Component, User, UserComponentPermission
+    Component, User, UserComponentPermission
 )
 
 @pytest.fixture(scope='module')
