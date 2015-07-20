@@ -17,7 +17,7 @@ import sqlalchemy as sa
 import sqlalchemy.dialects.postgresql as sapg
 
 def upgrade():
-    # Create table
+    # Create tables
     op.create_table(
         'components',
         sa.Column('id', sa.Integer, primary_key=True, unique=True, nullable=False),
@@ -30,12 +30,42 @@ def upgrade():
             server_default=sa.text('CURRENT_TIMESTAMP')),
     )
 
-    # Backfill any existing rows. (Should be NOP but add for documentation.)
-    op.execute('UPDATE components SET updated_at=CURRENT_TIMESTAMP;')
+    op.create_table(
+        'users',
+        sa.Column('id', sa.Integer, primary_key=True, unique=True, nullable=False),
+        sa.Column('name', sa.Text),
+        sa.Column('created_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+        sa.Column('updated_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+    )
+
+    permission_enum = sapg.ENUM(
+        'create', 'read', 'update', 'delete',
+        name='permission'
+    )
+
+    op.create_table(
+        'user_component_perms',
+        sa.Column('id', sa.Integer, primary_key=True, unique=True, nullable=False),
+        sa.Column('user_id', sa.Integer, sa.ForeignKey('users.id'),
+            nullable=False),
+        sa.Column('component_id', sa.Integer, sa.ForeignKey('components.id'),
+            nullable=False),
+        sa.Column('permission', permission_enum, nullable=False),
+        sa.Column('created_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+        sa.Column('updated_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+    )
+
+    # If this were anything other than the base migration, this is how you'd
+    # backfill rows.
+    ## op.execute('UPDATE components SET updated_at=CURRENT_TIMESTAMP;')
 
     # Add a trigger to automatically update the updated_at column on update.
     op.execute('''
-        CREATE FUNCTION update_components_updated_at_col() RETURNS TRIGGER AS '
+        CREATE FUNCTION update_updated_at_col() RETURNS TRIGGER AS '
             BEGIN
                 NEW.updated_at = NOW();
                 RETURN NEW;
@@ -46,10 +76,20 @@ def upgrade():
     op.execute('''
         CREATE TRIGGER update_components_updated_at_trigger
             BEFORE UPDATE ON components
-            FOR EACH ROW EXECUTE PROCEDURE update_components_updated_at_col()
+            FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
+        ;
+    ''')
+
+    op.execute('''
+        CREATE TRIGGER update_users_updated_at_trigger
+            BEFORE UPDATE ON users
+            FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
         ;
     ''')
 
 def downgrade():
+    op.drop_table('user_component_perms')
+    op.drop_table('users')
     op.drop_table('components')
-    op.execute('DROP FUNCTION update_components_updated_at_col() CASCADE;')
+    op.execute('DROP TYPE permission;')
+    op.execute('DROP FUNCTION update_updated_at_col() CASCADE;')

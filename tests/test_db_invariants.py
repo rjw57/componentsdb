@@ -9,7 +9,7 @@ import pytest
 from flask import Flask
 from mixer.backend.flask import Mixer
 
-from componentsdb.model import Component
+from componentsdb.model import Component, User
 
 @pytest.fixture
 def component(db, mixer):
@@ -20,16 +20,13 @@ def component(db, mixer):
     )
     return c
 
-def test_component_create_sql(db):
-    """Use raw SQL to create a component and check that it succeeds."""
-    code, desc = 'X1', 'my component'
-    new_id = db.engine.execute('''
-        INSERT INTO components (code, description) VALUES (%s, %s) RETURNING id;
-    ''', (code, desc)).fetchone()
-    assert new_id is not None
-    logging.info('Created component with id: %s', new_id)
+@pytest.fixture
+def user(db, mixer):
+    """A newly inserted user with random values."""
+    u = mixer.blend(User, name=mixer.FAKE)
+    return u
 
-def test_component_auto_columns(db, mixer, component):
+def test_component_created_at(db, mixer, component):
     """Assert created_at column is non-null in newly created components and that
     updated_at matches it."""
     # Retrieve component
@@ -58,4 +55,35 @@ def test_component_updated_at(db, mixer, component):
 
     logging.info('component %s created_at=%s', c.id, c.created_at)
     logging.info('component %s updated_at=%s', c.id, c.updated_at)
+    assert c.updated_at > c.created_at
+
+def test_user_created_at(db, mixer, user):
+    """Assert created_at column is non-null in newly created users and that
+    updated_at matches it."""
+    # Retrieve user
+    c = User.query.get(user.id)
+    assert c is not None
+
+    # Check created at
+    logging.info('user %s created with created_at=%s', c.id, c.created_at)
+    assert c.created_at is not None
+
+    # Check updated_at
+    logging.info('user %s updated with updated_at=%s', c.id, c.updated_at)
+    assert c.updated_at == c.created_at
+
+def test_user_updated_at(db, mixer, user):
+    """Assert updated_at column is automatically updated by database."""
+    # Update
+    c = User.query.get(user.id)
+    c.name = 'foobar'
+    db.session.add(c)
+    db.session.commit()
+
+    # Retrieve
+    c = Component.query.get(c.id)
+    assert c.code == 'foobar'
+
+    logging.info('user %s created_at=%s', c.id, c.created_at)
+    logging.info('user %s updated_at=%s', c.id, c.updated_at)
     assert c.updated_at > c.created_at
