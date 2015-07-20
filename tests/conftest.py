@@ -12,22 +12,29 @@ from componentsdb.model import (
     Component, User, UserComponentPermission
 )
 
-@pytest.fixture(scope='module')
-def app():
-    _app = create_app()
-    _app.debug = True
-    _app.secret_key = 'hello, world'
-    _app.config['TESTING'] = True
-    return _app
+def _create_app():
+    app = create_app()
 
-@pytest.fixture(scope='module')
-def db(app):
+    app.debug = True
+    app.secret_key = 'hello, world'
+    app.testing = True
+
     app.config['SQLALCHEMY_ECHO'] = True
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres:///comp_testing'
-    _db.init_app(app)
+    return app
+
+_app = _create_app()
+_db.init_app(_app)
+
+@pytest.fixture(scope='session')
+def app():
+    return _app
+
+@pytest.fixture(scope='session')
+def db(app):
     return _db
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def mixer(app, db):
     faker = Faker()
 
@@ -43,7 +50,7 @@ def mixer(app, db):
 
     return mixer
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def user(mixer):
     """A fake test user."""
     return mixer.blend(User)

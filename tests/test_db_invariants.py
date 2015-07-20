@@ -81,8 +81,8 @@ def test_user_updated_at(db, mixer, user):
     db.session.commit()
 
     # Retrieve
-    c = Component.query.get(c.id)
-    assert c.code == 'foobar'
+    c = User.query.get(c.id)
+    assert c.name == 'foobar'
 
     logging.info('user %s created_at=%s', c.id, c.created_at)
     logging.info('user %s updated_at=%s', c.id, c.updated_at)

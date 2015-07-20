@@ -9,6 +9,10 @@ db = SQLAlchemy()
 
 def create_app():
     app = Flask(__name__)
+
+    from componentsdb.api import api
+    app.register_blueprint(api, url_prefix='/api')
+
     return app
 
 _JWT_ALGS = [ 'HS256' ]
