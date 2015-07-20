@@ -7,6 +7,7 @@ from flask.ext.script import Manager
 from componentsdb.app import create_app, db
 
 app = create_app()
+app.secret_key = 'shhhhhhh!!!'.encode('ascii')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres:///comp_testing'
 app.config['SQLALCHEMY_ECHO'] = True
 

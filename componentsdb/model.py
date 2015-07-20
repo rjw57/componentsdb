@@ -61,6 +61,10 @@ class User(db.Model, _MixinsCommon, _MixinEncodable):
     __tablename__ = 'users'
     name = db.Column(db.Text, nullable=False)
 
+    def token(self):
+        """Return a JWT with this user as a claim."""
+        raise NotImplemented()
+
 Permission = db.Enum('create', 'read', 'update', 'delete')
 
 class UserComponentPermission(db.Model, _MixinsCommon):

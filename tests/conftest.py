@@ -16,6 +16,7 @@ from componentsdb.model import (
 def app():
     _app = create_app()
     _app.debug = True
+    _app.secret_key = 'hello, world'
     _app.config['TESTING'] = True
     return _app
 

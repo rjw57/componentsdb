@@ -9,6 +9,7 @@ setup(
         'flask-sqlalchemy',
         'future',
         'psycopg2',
+        'pyjwt',
         'sqlalchemy',
     ],
 )
