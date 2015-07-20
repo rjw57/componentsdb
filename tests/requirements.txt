@@ -1,0 +1,5 @@
+# requirements for test suite
+alembic
+psycopg2
+pytest
+sqlalchemy
