@@ -53,12 +53,14 @@ class _MixinsCommon(_MixinCreatedAt, _MixinWithId):
 
 class Component(db.Model, _MixinsCommon, _MixinEncodable):
     __tablename__ = 'components'
+
     code = db.Column(db.Text)
     description = db.Column(db.Text)
     datasheet_url = db.Column(db.Text)
 
 class User(db.Model, _MixinsCommon, _MixinEncodable):
     __tablename__ = 'users'
+
     name = db.Column(db.Text, nullable=False)
 
     @property
@@ -67,7 +69,7 @@ class User(db.Model, _MixinsCommon, _MixinEncodable):
         return jwt_encode(dict(user=self.id))
 
     @classmethod
-    def decode_token(self, t):
+    def decode_token(cls, t):
         p = jwt_decode(t)
         return int(p['user'])
 
