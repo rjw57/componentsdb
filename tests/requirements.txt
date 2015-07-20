@@ -1,8 +1,10 @@
 # requirements for test suite
 alembic
+coverage
 mixer
 psycopg2
 pytest
 pytest-capturelog
+pytest-cov
 pytest-flask
 sqlalchemy

@@ -7,3 +7,6 @@ dist
 
 # Tox work directory
 .tox
+
+# Coverage reports
+.coverage
