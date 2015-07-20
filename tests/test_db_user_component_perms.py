@@ -34,7 +34,7 @@ def test_user_components_query(perms, users, components, db, mixer):
     ).id
 
     # ensure all entities returned by query are valid
-    q = query_user_components(u, 'read')
+    q = user_components(u, 'read')
     for _c, _ucp in q.add_entity(UserComponentPermission):
         assert _ucp.permission == 'read'
         assert _ucp.user_id == u.id
