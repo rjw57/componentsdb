@@ -22,6 +22,15 @@ def test_profile_allows_auth(client, auth_headers):
     r = client.get(url_for('api.profile'), headers=auth_headers)
     assert r.status_code == 200
 
+def test_profile_needs_bearer_auth(client):
+    """Anything other than bearer auth is a bad request."""
+    assert client.get(
+        url_for('api.profile'), headers={'Authorization': 'Basic foobar'}
+    ).status_code == 400
+    assert client.get(
+        url_for('api.profile'), headers={'Authorization': 'Some other scheme'}
+    ).status_code == 400
+
 def test_profile_matches_user(user, client, auth_headers):
     """Profile matches the authorised user."""
     r = client.get(url_for('api.profile'), headers=auth_headers).json
