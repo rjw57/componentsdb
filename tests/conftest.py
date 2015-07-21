@@ -7,24 +7,12 @@ import pytest
 from faker import Faker
 from mixer.backend.flask import Mixer
 
-from componentsdb.app import create_app, db as _db
+from componentsdb.app import default_app, db as _db
 from componentsdb.model import (
     Component, User, UserComponentPermission
 )
 
-def _create_app():
-    app = create_app()
-
-    app.debug = True
-    app.secret_key = 'hello, world'
-    app.testing = True
-
-    app.config['SQLALCHEMY_ECHO'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres:///comp_testing'
-    return app
-
-_app = _create_app()
-_db.init_app(_app)
+_app = default_app()
 
 @pytest.fixture(scope='session')
 def app():

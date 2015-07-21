@@ -2,17 +2,20 @@
 CLI management script. (Requires flask-script.)
 
 """
+import os
+
+# pylint: disable=no-name-in-module,import-error
 from flask.ext.script import Manager
 
-from componentsdb.app import create_app, db
+from componentsdb.app import default_app
 
-app = create_app()
-app.secret_key = 'shhhhhhh!!!'.encode('ascii')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres:///comp_testing'
-app.config['SQLALCHEMY_ECHO'] = True
+# Default to testing environment settings unless told otherwise
+if 'COMPONENTSDB_SETTINGS' not in os.environ:
+    os.environ['COMPONENTSDB_SETTINGS'] = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), 'tests', 'settings.py'
+    )
 
-db.init_app(app)
-
+app = default_app()
 manager = Manager(app)
 
 if __name__ == "__main__":
