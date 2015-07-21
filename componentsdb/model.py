@@ -7,9 +7,11 @@ import base64
 import enum
 import json
 
+# pylint: disable=no-name-in-module,import-error
+from flask.ext.sqlalchemy import SQLAlchemy
 import sqlalchemy.types as types
 
-from componentsdb.app import db, jwt_encode, jwt_decode
+db = SQLAlchemy()
 
 # Mixin classes for common model functionality
 
@@ -129,10 +131,12 @@ class User(db.Model, _CommonModelMixins, _MixinEncodable):
     @property
     def token(self):
         """Return a JWT with this user as a claim."""
+        from componentsdb.auth import jwt_encode
         return jwt_encode(dict(user=self.id))
 
     @classmethod
     def decode_token(cls, t):
+        from componentsdb.auth import jwt_decode
         p = jwt_decode(t)
         return int(p['user'])
 

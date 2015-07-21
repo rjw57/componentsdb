@@ -10,8 +10,10 @@ from contextlib import contextmanager
 import jwt
 import pytest
 
-from componentsdb.app import jwt_encode, jwt_decode, _jwt_encode_dangerous
-from componentsdb.auth import verify_user_token, current_user
+from componentsdb.auth import (
+    jwt_encode, jwt_decode, _jwt_encode_dangerous, verify_user_token,
+    current_user,
+)
 from componentsdb.model import User
 
 @contextmanager
