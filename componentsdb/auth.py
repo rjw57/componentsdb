@@ -1,11 +1,11 @@
-from flask import _request_ctx_stack
+from flask import g as _flask_g
 from werkzeug.local import LocalProxy
 
 from componentsdb.model import User
 
 # A proxy for the current user.
 current_user = LocalProxy(
-    lambda: getattr(_request_ctx_stack.top, 'current_user', None)
+    lambda: _flask_g.get('current_user', None)
 )
 
 def verify_user_token(token):
@@ -14,5 +14,6 @@ def verify_user_token(token):
     raise a 404 if the specified user is not found.
 
     """
+    # pylint: disable=no-member
     u = User.query.get_or_404(User.decode_token(token))
-    _request_ctx_stack.top.current_user = u
+    _flask_g.current_user = u
