@@ -11,9 +11,10 @@ import enum
 import jwt
 import sqlalchemy.types as types
 from flask import g, json, current_app
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
+from werkzeug.exceptions import NotFound
 
-from componentsdb.exception import KeyDecodeError
+from componentsdb.exception import KeyDecodeError, KeyEncodeError
 
 db = SQLAlchemy()
 
@@ -33,8 +34,11 @@ class _EncodableKeyMixin(object):
     """
     @property
     def encoded_key(self):
-        """Return a URL-safe encoding of the primary key and table name."""
+        """Return a URL-safe encoding of the primary key and table name. If the
+        object is not in the database (id is None), raise KeyEncodeError."""
         # pylint: disable=no-member
+        if self.id is None:
+            raise KeyEncodeError('object not added to database')
         return _b64_encode(json.dumps(
             dict(t=self.__class__.__tablename__, id=self.id)
         ).encode('utf8'))
@@ -126,8 +130,24 @@ class Component(db.Model, _CommonMixins, _EncodableKeyMixin):
     description = db.Column(db.Text)
     datasheet_url = db.Column(db.Text)
 
+class _CollectionQuery(BaseQuery):
+    # pylint: disable=no-init
+
+    def get_for_user_or_404(self, user, id_):
+        """Get the collection specified by id but only if the user has read
+        permissions."""
+        # pylint: disable=no-member
+        c = self.get_or_404(id_)
+        if c is None or not c.has_permission(user, Permission.READ):
+            raise NotFound
+        return c
+
+    def get_for_current_user_or_404(self, id_):
+        return self.get_for_user_or_404(g.current_user, id_)
+
 class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
     __tablename__ = 'collections'
+    query_class = _CollectionQuery
 
     name = db.Column(db.Text, nullable=False)
 
@@ -141,6 +161,11 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
         db.session.add(UserCollectionPermission(
             user=user, collection=self, permission=perm
         ))
+
+    def add_all_permissions(self, user):
+        """Add all permissions to user on this collection."""
+        for p in Permission:
+            self.add_permission(user, p)
 
     def remove_permission(self, user, perm):
         # pylint: disable=no-member

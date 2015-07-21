@@ -65,6 +65,18 @@ def test_add_permission(user, collection):
     assert collection.has_permission(user, Permission.READ)
     assert not collection.has_permission(user, Permission.UPDATE)
 
+def test_add_all_permissions(user, collection):
+    # User cannot do anything initially
+    for p in Permission:
+        assert not collection.has_permission(user, p)
+
+    # Allow user permission to do anything
+    collection.add_all_permissions(user)
+
+    # Check permissions
+    for p in Permission:
+        assert collection.has_permission(user, p)
+
 def test_remove_permission(user, collection):
     # Allow user permission to read
     collection.add_permission(user, Permission.READ)
