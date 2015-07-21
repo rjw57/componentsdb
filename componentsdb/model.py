@@ -3,18 +3,25 @@ SQLAlchemy models for the database.
 
 """
 # pylint: disable=too-few-public-methods
-
 import base64
+import enum
 import json
+
+import sqlalchemy.types as types
 
 from componentsdb.app import db, jwt_encode, jwt_decode
 
-class _MixinWithId(object):
+# Mixin classes for common model functionality
+
+class _ModelWithIdMixin(object):
     id = db.Column(db.Integer, primary_key=True)
 
-class _MixinCreatedAt(object):
+class _ModelWithTimestampsMixin(object):
     created_at = db.Column(db.DateTime, server_default=db.FetchedValue())
     updated_at = db.Column(db.DateTime, server_default=db.FetchedValue())
+
+class _CommonModelMixins(_ModelWithTimestampsMixin, _ModelWithIdMixin):
+    pass
 
 def _b64_encode(bs):
     """Encode bytes to URL-safe base64 string stripping trailing '='s."""
@@ -55,17 +62,14 @@ class _MixinEncodable(object):
             raise KeyDecodeError('key is for incorrect table')
         return int(d['id'])
 
-class _MixinsCommon(_MixinCreatedAt, _MixinWithId):
-    pass
-
-class Component(db.Model, _MixinsCommon, _MixinEncodable):
+class Component(db.Model, _CommonModelMixins, _MixinEncodable):
     __tablename__ = 'components'
 
     code = db.Column(db.Text)
     description = db.Column(db.Text)
     datasheet_url = db.Column(db.Text)
 
-class Collection(db.Model, _MixinsCommon, _MixinEncodable):
+class Collection(db.Model, _CommonModelMixins, _MixinEncodable):
     __tablename__ = 'collections'
 
     name = db.Column(db.Text, nullable=False)
@@ -117,7 +121,7 @@ class Collection(db.Model, _MixinsCommon, _MixinEncodable):
         from componentsdb.auth import current_user
         return self.has_permission(current_user, Permission.DELETE)
 
-class User(db.Model, _MixinsCommon, _MixinEncodable):
+class User(db.Model, _CommonModelMixins, _MixinEncodable):
     __tablename__ = 'users'
 
     name = db.Column(db.Text, nullable=False)
@@ -132,22 +136,37 @@ class User(db.Model, _MixinsCommon, _MixinEncodable):
         p = jwt_decode(t)
         return int(p['user'])
 
-Permission = db.Enum('create', 'read', 'update', 'delete')
+class Permission(enum.Enum):
+    """Posssible permissions."""
+    CREATE = 'create'
+    READ = 'read'
+    UPDATE = 'update'
+    DELETE = 'delete'
 
-# Convenience constants
-Permission.CREATE = 'create'
-Permission.READ = 'read'
-Permission.UPDATE = 'update'
-Permission.DELETE = 'delete'
+def _decorate_enum_type(enum_class):
+    class _EnumTypeDecorator(types.TypeDecorator):
+        """A SQLAlchemy TypeDecorator for 3.4-style enums."""
+        # pylint: disable=abstract-method
 
-class UserCollectionPermission(db.Model, _MixinsCommon):
+        impl = db.Enum(*(m.value for m in enum_class))
+
+        def process_bind_param(self, value, dialect):
+            return value.value
+
+        def process_result_value(self, value, dialect):
+            return enum_class(value)
+    return _EnumTypeDecorator
+
+_PermissionType = _decorate_enum_type(Permission)
+
+class UserCollectionPermission(db.Model, _CommonModelMixins):
     __tablename__ = 'user_collection_perms'
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     collection_id = db.Column(
         db.Integer, db.ForeignKey('collections.id'), nullable=False
     )
-    permission = db.Column(Permission, nullable=False)
+    permission = db.Column(_PermissionType, nullable=False)
 
     user = db.relationship('User')
     collection = db.relationship('Collection')

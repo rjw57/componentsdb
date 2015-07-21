@@ -19,9 +19,7 @@ def users(mixer):
 def perms(mixer, users, collections):
     # pylint: disable=unused-argument
     perms = mixer.cycle(15).blend(
-        UserCollectionPermission,
-        user=mixer.SELECT,
-        collection=mixer.SELECT,
+        UserCollectionPermission, user=mixer.SELECT, collection=mixer.SELECT,
     )
 
     return perms
@@ -32,13 +30,14 @@ def test_user_collections_query(perms, users, collections, db, mixer):
 
     # ensure user has at least one read permission
     perm_id = mixer.blend(
-        UserCollectionPermission, user=u, collection=c, permission='read'
+        UserCollectionPermission, user=u, collection=c,
+        permission=Permission.READ
     ).id
 
     # ensure all entities returned by query are valid
-    q = user_collections(u, 'read')
+    q = user_collections(u, Permission.READ)
     for _, _ucp in q.add_entity(UserCollectionPermission):
-        assert _ucp.permission == 'read'
+        assert _ucp.permission == Permission.READ
         assert _ucp.user_id == u.id
 
     # ensure at least one entity returned

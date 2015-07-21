@@ -13,7 +13,7 @@ from mixer.backend.flask import Mixer
 from componentsdb.app import default_app, db as _db
 from componentsdb.auth import verify_user_token, current_user as _current_user
 from componentsdb.model import (
-    Component, Collection, User, UserCollectionPermission
+    Component, Collection, User, UserCollectionPermission, Permission
 )
 
 _app = default_app()
@@ -39,8 +39,10 @@ def mixer(app):
     )
 
     mixer.register(User, name=faker.name)
-
     mixer.register(Collection, name=faker.text)
+    mixer.register(
+        UserCollectionPermission, permission=faker.random_element(Permission)
+    )
 
     return mixer
 

@@ -4,10 +4,8 @@ Tests the basic database invariants and constraints.
 # pylint: disable=redefined-outer-name,no-member
 import logging
 
-import pytest
-
 from componentsdb.model import (
-        Component, User, Collection, UserCollectionPermission
+    Component, User, Collection, UserCollectionPermission, Permission
 )
 
 def test_component_created_at(component):
@@ -118,7 +116,8 @@ def test_user_collection_permission_created_at(user_collection_permission):
     assert c.created_at is not None
 
     # Check updated_at
-    logging.info('user_collection_permission %s updated with updated_at=%s',
+    logging.info(
+        'user_collection_permission %s updated with updated_at=%s',
         c.id, c.updated_at
     )
     assert c.updated_at == c.created_at
@@ -129,7 +128,7 @@ def test_user_collection_permission_updated_at(db, user_collection_permission):
     c = UserCollectionPermission.query.get(user_collection_permission.id)
 
     p = c.permission
-    new_p = 'update' if p == 'read' else 'read'
+    new_p = Permission.UPDATE if p == Permission.READ else Permission.READ
     c.permission = new_p
     db.session.add(c)
     db.session.commit()
