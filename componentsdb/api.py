@@ -12,6 +12,13 @@ from componentsdb.model import Collection
 
 api = Blueprint('api', __name__)
 
+def collection_to_resource(c):
+    """Convert c to JSON-friendly dict."""
+    key = c.encoded_key
+    return dict(
+        key=key, url=url_for('api.collection', key=key), name=c.name,
+    )
+
 def _get_json_or_400():
     """Return the JSON body from the request or raise BadRequest if the content
     tpye is incorrectly set."""
@@ -50,11 +57,7 @@ def collections():
     if request.method == 'PUT':
         # create a collection and assign the current user all permissions
         c = Collection.create(_get_json_or_400())
-
-        key = c.encoded_key
-        return jsonify(dict(
-            key=key, url=url_for('api.collection', key=key),
-        )), 201
+        return jsonify(collection_to_resource(c)), 201
 
     # Treat all other methods as "GET"
     return jsonify({})
