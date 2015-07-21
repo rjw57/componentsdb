@@ -151,6 +151,16 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
 
     name = db.Column(db.Text, nullable=False)
 
+    @classmethod
+    def create(cls, body):
+        """Create a new collection as the current user using the resource
+        spcified in the dict-like body. Raises a HTTPException on error."""
+        c = Collection(name=body.get('name'))
+        c.add_all_permissions(g.current_user)
+        db.session.add(c)
+        db.session.commit()
+        return c
+
     def has_permission(self, user, perm):
         """Return True iff the user has permission perm on this collection."""
         return query_collection_user_permissions(self, user, perm).\

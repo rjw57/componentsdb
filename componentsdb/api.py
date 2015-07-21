@@ -5,10 +5,10 @@ JSON API blueprint.
 from functools import wraps
 
 from flask import Blueprint, jsonify, request, url_for
-from werkzeug.exceptions import Unauthorized, BadRequest, MethodNotAllowed
+from werkzeug.exceptions import Unauthorized, BadRequest
 
 from componentsdb.app import current_user, set_current_user_with_token
-from componentsdb.model import db, Collection
+from componentsdb.model import Collection
 
 api = Blueprint('api', __name__)
 
@@ -49,11 +49,7 @@ def profile():
 def collections():
     if request.method == 'PUT':
         # create a collection and assign the current user all permissions
-        body = _get_json_or_400()
-        c = Collection(name=body.get('name'))
-        c.add_all_permissions(current_user)
-        db.session.add(c)
-        db.session.commit()
+        c = Collection.create(_get_json_or_400())
 
         key = c.encoded_key
         return jsonify(dict(
