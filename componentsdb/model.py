@@ -3,13 +3,14 @@ SQLAlchemy models for the database.
 
 """
 # pylint: disable=too-few-public-methods
-import base64
 import enum
 import json
 
 # pylint: disable=no-name-in-module,import-error
 from flask.ext.sqlalchemy import SQLAlchemy
 import sqlalchemy.types as types
+
+from componentsdb._mixin import ModelWithEncodableKeyMixin
 
 db = SQLAlchemy()
 
@@ -25,53 +26,49 @@ class _ModelWithTimestampsMixin(object):
 class _CommonModelMixins(_ModelWithTimestampsMixin, _ModelWithIdMixin):
     pass
 
-def _b64_encode(bs):
-    """Encode bytes to URL-safe base64 string stripping trailing '='s."""
-    return base64.urlsafe_b64encode(bs).decode('utf8').rstrip('=')
+# Utility functions
 
-def _b64_decode(s):
-    """Decode bytes from URL-safe base64 inserting required padding."""
-    padding = 4 - len(s)%4
-    return base64.urlsafe_b64decode(s + b'='*padding)
+def _decorate_enum_type(enum_class):
+    class _EnumTypeDecorator(types.TypeDecorator):
+        """A SQLAlchemy TypeDecorator for 3.4-style enums."""
+        # pylint: disable=abstract-method
 
-class KeyDecodeError(Exception):
-    pass
+        impl = db.Enum(*(m.value for m in enum_class))
 
-class _MixinEncodable(object):
-    """A mixin which allows the object to be referenced by an encoded URL-safe
-    id.
+        def process_bind_param(self, value, dialect):
+            return value.value
 
-    """
+        def process_result_value(self, value, dialect):
+            return enum_class(value)
+    return _EnumTypeDecorator
+
+# The database models themselves
+
+class User(db.Model, _CommonModelMixins, ModelWithEncodableKeyMixin):
+    __tablename__ = 'users'
+
+    name = db.Column(db.Text, nullable=False)
+
     @property
-    def encoded_key(self):
-        """Return a URL-safe encoding of the primary key and table name."""
-        # pylint: disable=no-member
-        return _b64_encode(json.dumps(
-            dict(t=self.__class__.__tablename__, id=self.id)
-        ).encode('utf8'))
+    def token(self):
+        """Return a JWT with this user as a claim."""
+        from componentsdb.auth import jwt_encode
+        return jwt_encode(dict(user=self.id))
 
     @classmethod
-    def decode_key(cls, k):
-        """Decode a URL-safe encoded key for this model into a primary key.
+    def decode_token(cls, t):
+        from componentsdb.auth import jwt_decode
+        p = jwt_decode(t)
+        return int(p['user'])
 
-        Raises KeyDecodeError if the key is correctly encoded but for the wrong
-        table.
-
-        """
-        # pylint: disable=no-member
-        d = json.loads(_b64_decode(k.encode('ascii')).decode('utf8'))
-        if cls.__tablename__ != d['t']:
-            raise KeyDecodeError('key is for incorrect table')
-        return int(d['id'])
-
-class Component(db.Model, _CommonModelMixins, _MixinEncodable):
+class Component(db.Model, _CommonModelMixins, ModelWithEncodableKeyMixin):
     __tablename__ = 'components'
 
     code = db.Column(db.Text)
     description = db.Column(db.Text)
     datasheet_url = db.Column(db.Text)
 
-class Collection(db.Model, _CommonModelMixins, _MixinEncodable):
+class Collection(db.Model, _CommonModelMixins, ModelWithEncodableKeyMixin):
     __tablename__ = 'collections'
 
     name = db.Column(db.Text, nullable=False)
@@ -123,43 +120,12 @@ class Collection(db.Model, _CommonModelMixins, _MixinEncodable):
         from componentsdb.auth import current_user
         return self.has_permission(current_user, Permission.DELETE)
 
-class User(db.Model, _CommonModelMixins, _MixinEncodable):
-    __tablename__ = 'users'
-
-    name = db.Column(db.Text, nullable=False)
-
-    @property
-    def token(self):
-        """Return a JWT with this user as a claim."""
-        from componentsdb.auth import jwt_encode
-        return jwt_encode(dict(user=self.id))
-
-    @classmethod
-    def decode_token(cls, t):
-        from componentsdb.auth import jwt_decode
-        p = jwt_decode(t)
-        return int(p['user'])
-
 class Permission(enum.Enum):
     """Posssible permissions."""
     CREATE = 'create'
     READ = 'read'
     UPDATE = 'update'
     DELETE = 'delete'
-
-def _decorate_enum_type(enum_class):
-    class _EnumTypeDecorator(types.TypeDecorator):
-        """A SQLAlchemy TypeDecorator for 3.4-style enums."""
-        # pylint: disable=abstract-method
-
-        impl = db.Enum(*(m.value for m in enum_class))
-
-        def process_bind_param(self, value, dialect):
-            return value.value
-
-        def process_result_value(self, value, dialect):
-            return enum_class(value)
-    return _EnumTypeDecorator
 
 _PermissionType = _decorate_enum_type(Permission)
 
@@ -174,5 +140,4 @@ class UserCollectionPermission(db.Model, _CommonModelMixins):
 
     user = db.relationship('User')
     collection = db.relationship('Collection')
-
 
