@@ -16,6 +16,12 @@ def _post_json(client, url, data, headers=None):
     h.update(headers)
     return client.post(url, data=json.dumps(data), headers=h)
 
+def _put_json(client, url, data, headers=None):
+    """Put JSON encoded data to url via client optionally setting headers."""
+    h = {'Content-Type': 'application/json'}
+    h.update(headers)
+    return client.put(url, data=json.dumps(data), headers=h)
+
 def test_profile_needs_auth(client):
     """Authorisation is needed to get profile."""
     assert client.get(url_for('api.profile')).status_code == 401
@@ -42,12 +48,12 @@ def test_profile_matches_user(user, client, user_api_headers):
 
 def test_collection_create_needs_auth(client):
     """Authorisation is needed to create a collection."""
-    assert client.post(url_for('api.collections')).status_code == 401
+    assert client.put(url_for('api.collections')).status_code == 401
 
 def test_collection_create_succeeds(client, user_api_headers):
     """Creating a collection should succeed."""
     request = dict(name='foobar-%s' % random.random())
-    r = _post_json(
+    r = _put_json(
         client, url_for('api.collections'), request, user_api_headers
     )
     assert r.status_code == 201 # created
@@ -55,7 +61,7 @@ def test_collection_create_succeeds(client, user_api_headers):
 def test_collection_create_needs_json(client, user_api_headers):
     """Creating a collection should succeed."""
     request = dict(name='foobar-%s' % random.random())
-    r = client.post(
+    r = client.put(
         url_for('api.collections'), data=request, headers=user_api_headers
     )
     assert r.status_code == 400 # bad request
@@ -65,7 +71,7 @@ def test_collection_create_returns_url(client, user_api_headers):
     # pylint: disable=no-member
 
     request = dict(name='foobar-%s' % random.random())
-    r = _post_json(
+    r = _put_json(
         client, url_for('api.collections'), request, user_api_headers
     )
     assert r.status_code == 201 # created

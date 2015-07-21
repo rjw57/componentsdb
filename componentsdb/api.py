@@ -44,10 +44,10 @@ def auth_required(f):
 def profile():
     return jsonify(dict(name=current_user.name))
 
-@api.route('/collections', methods=['GET', 'POST'])
+@api.route('/collections', methods=['GET', 'PUT'])
 @auth_required
 def collections():
-    if request.method == 'POST':
+    if request.method == 'PUT':
         # create a collection and assign the current user all permissions
         body = _get_json_or_400()
         c = Collection(name=body.get('name'))
