@@ -22,6 +22,17 @@ target_metadata = None
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+# Piggyback on the application configuration mechanism to configure the
+# correct database for the environment.
+from componentsdb.app import default_app
+app = default_app()
+config.set_main_option(
+    "sqlalchemy.url",
+    app.config.get(
+        'SQLALCHEMY_DATABASE_URI',
+        config.get_main_option("sqlalchemy.url")
+    )
+)
 
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
