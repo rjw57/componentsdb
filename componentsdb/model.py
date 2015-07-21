@@ -2,6 +2,8 @@
 SQLAlchemy models for the database.
 
 """
+# pylint: disable=too-few-public-methods
+
 import base64
 import json
 
@@ -31,8 +33,9 @@ class _MixinEncodable(object):
     @property
     def encoded_key(self):
         """Return a URL-safe encoding of the primary key and table name."""
+        # pylint: disable=no-member
         return _b64_encode(json.dumps(
-            dict(t=self.__tablename__, id=self.id)
+            dict(t=self.__class__.__tablename__, id=self.id)
         ).encode('utf8'))
 
     @classmethod
@@ -43,6 +46,7 @@ class _MixinEncodable(object):
         table.
 
         """
+        # pylint: disable=no-member
         d = json.loads(_b64_decode(k.encode('ascii')).decode('utf8'))
         if cls.__tablename__ != d['t']:
             raise TypeError('key is for incorrect table')
@@ -79,8 +83,9 @@ class UserComponentPermission(db.Model, _MixinsCommon):
     __tablename__ = 'user_component_perms'
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    component_id = db.Column(db.Integer, db.ForeignKey('components.id'),
-            nullable=False)
+    component_id = db.Column(
+        db.Integer, db.ForeignKey('components.id'), nullable=False
+    )
     permission = db.Column(Permission, nullable=False)
 
     user = db.relationship('User')
