@@ -3,6 +3,7 @@ import os
 
 import jwt
 
+# pylint: disable=no-name-in-module,import-error
 from flask import Flask, current_app
 from flask.ext.sqlalchemy import SQLAlchemy
 
@@ -44,7 +45,7 @@ def default_app():
     init_app(app)
     return app
 
-_JWT_ALGS = [ 'HS256' ]
+_JWT_ALGS = ['HS256']
 _JWT_DEFAULT_EXP_DELTA = datetime.timedelta(hours=1)
 
 def _jwt_encode_dangerous(payload):
@@ -54,7 +55,7 @@ def _jwt_encode_dangerous(payload):
 
 def jwt_encode(payload):
     # Make a shallow copy of the payload and set the exp field.
-    p = { }
+    p = {}
     p.update(payload)
     p['exp'] = datetime.datetime.utcnow() + _JWT_DEFAULT_EXP_DELTA
     return _jwt_encode_dangerous(p)
