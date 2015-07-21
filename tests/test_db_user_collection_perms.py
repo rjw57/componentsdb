@@ -1,6 +1,8 @@
 import pytest
 
-from componentsdb.model import Collection, User, UserCollectionPermission
+from componentsdb.model import (
+    Collection, User, UserCollectionPermission, Permission
+)
 from componentsdb.query import *
 
 @pytest.fixture(scope='module')
@@ -41,3 +43,59 @@ def test_user_collections_query(perms, users, collections, db, mixer):
 
     # ensure that the permission we added is included
     assert q.filter(UserCollectionPermission.id == perm_id).count() == 1
+
+def test_has_permission(user, collection):
+    # User should have no permissions on the new collection
+    assert not collection.has_permission(user, Permission.CREATE)
+    assert not collection.has_permission(user, Permission.READ)
+    assert not collection.has_permission(user, Permission.UPDATE)
+    assert not collection.has_permission(user, Permission.DELETE)
+
+def test_add_permission(user, collection):
+    # User cannot read or update initially
+    assert not collection.has_permission(user, Permission.READ)
+    assert not collection.has_permission(user, Permission.UPDATE)
+
+    # Allow user permission to read
+    collection.add_permission(user, Permission.READ)
+
+    # User can now read but still not update
+    assert collection.has_permission(user, Permission.READ)
+    assert not collection.has_permission(user, Permission.UPDATE)
+
+def test_remove_permission(user, collection):
+    # Allow user permission to read
+    collection.add_permission(user, Permission.READ)
+
+    # User can now read
+    assert collection.has_permission(user, Permission.READ)
+
+    # Revoke permission
+    collection.remove_permission(user, Permission.READ)
+
+    # User cannot now read
+    assert not collection.has_permission(user, Permission.READ)
+
+def test_remove_non_existant_permission(user, collection):
+    """It should always be possible to remove a permission a user does not
+    have."""
+    assert not collection.has_permission(user, Permission.READ)
+    collection.remove_permission(user, Permission.READ)
+    assert not collection.has_permission(user, Permission.READ)
+
+def test_add_duplicate_permission(user, collection):
+    """It should always be possible to add a permission a user already has."""
+    assert not collection.has_permission(user, Permission.READ)
+    collection.add_permission(user, Permission.READ)
+    assert collection.has_permission(user, Permission.READ)
+    collection.add_permission(user, Permission.READ)
+    assert collection.has_permission(user, Permission.READ)
+
+def test_removes_all_permissions(user, collection):
+    """Duplicate permissions are removed."""
+    assert not collection.has_permission(user, Permission.READ)
+    collection.add_permission(user, Permission.READ)
+    collection.add_permission(user, Permission.READ)
+    assert collection.has_permission(user, Permission.READ)
+    collection.remove_permission(user, Permission.READ)
+    assert not collection.has_permission(user, Permission.READ)

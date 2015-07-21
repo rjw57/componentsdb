@@ -70,6 +70,30 @@ class Collection(db.Model, _MixinsCommon, _MixinEncodable):
 
     name = db.Column(db.Text, nullable=False)
 
+    def _permissions_query(self, user, perm):
+        q = UserCollectionPermission.query # pylint: disable=no-member
+        q = q.filter(UserCollectionPermission.user_id == user.id)
+        q = q.join(Collection).filter(Collection.id == self.id)
+        q = q.filter(UserCollectionPermission.permission == perm)
+        return q
+
+    def has_permission(self, user, perm):
+        """Return True iff the user has permission perm on this collection."""
+        return self._permissions_query(user, perm).limit(1).count() > 0
+
+    def add_permission(self, user, perm):
+        """Add the permission perm on this collection to user user."""
+        db.session.add(UserCollectionPermission(
+            user=user, collection=self, permission=perm
+        ))
+
+    def remove_permission(self, user, perm):
+        # pylint: disable=no-member
+        s = self._permissions_query(user, perm).\
+            with_entities(UserCollectionPermission.id)
+        UserCollectionPermission.query.\
+            filter(UserCollectionPermission.id.in_(s)).delete(False)
+
 class User(db.Model, _MixinsCommon, _MixinEncodable):
     __tablename__ = 'users'
 
@@ -86,6 +110,12 @@ class User(db.Model, _MixinsCommon, _MixinEncodable):
         return int(p['user'])
 
 Permission = db.Enum('create', 'read', 'update', 'delete')
+
+# Convenience constants
+Permission.CREATE = 'create'
+Permission.READ = 'read'
+Permission.UPDATE = 'update'
+Permission.DELETE = 'delete'
 
 class UserCollectionPermission(db.Model, _MixinsCommon):
     __tablename__ = 'user_collection_perms'
