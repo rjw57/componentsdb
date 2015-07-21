@@ -1,11 +1,17 @@
 ## Testing environment
 
-I use pyenv for testing. Assuming the virtualenvs ``compdb-2.7`` and
-``compdb-3.4`` exist with the appropriate version of Python, one can enable both
-via:
+The requirements for the testing environment are listed in
+``tests/requirements.txt``. They can be installed via:
+
 ```console
-$ pyenv local compdb-3.4 compdb-2.7
+$ pip install -r test/requirements.txt
 ```
-The ``py27`` and ``py34`` envs in ``tox.ini`` should then work without further
-configuration.
+
+In addition, a PostgreSQL database must be available. By default the test suite
+uses the "componentsdb_testing" database but you can override this via the
+``TEST_DATABASE_URI`` environment variable:
+
+```console
+$ TEST_DATABASE_URI=postgres:///other_db tox
+```
 
