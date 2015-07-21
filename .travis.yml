@@ -8,9 +8,12 @@ env:
     - TOX_ENV=migration
 install:
     - pip install --upgrade pip
+    - pip install python-coveralls # requirement just for travis
     - pip install -r requirements.txt
 before_script:
     - psql -c "create database componentsdb_testing;" -U postgres
 script:
     - tox -e $TOX_ENV
+after_success:
+    - coveralls
 
