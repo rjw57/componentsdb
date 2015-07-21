@@ -1,41 +1,38 @@
 import pytest
 
-from componentsdb.model import Component, User, UserComponentPermission
+from componentsdb.model import Collection, User, UserCollectionPermission
 from componentsdb.query import *
 
 @pytest.fixture(scope='module')
-def components(mixer):
-    return mixer.cycle(5).blend(
-        Component, code=mixer.FAKE, description=mixer.FAKE,
-        datasheet_url=mixer.FAKE
-    )
+def collections(mixer):
+    return mixer.cycle(5).blend(Collection, name=mixer.FAKE)
 
 @pytest.fixture(scope='module')
 def users(mixer):
     return mixer.cycle(5).blend(User, name=mixer.FAKE)
 
 @pytest.fixture(scope='module')
-def perms(mixer, users, components):
+def perms(mixer, users, collections):
     perms = mixer.cycle(15).blend(
-        UserComponentPermission,
+        UserCollectionPermission,
         user=mixer.SELECT,
-        component=mixer.SELECT,
+        collection=mixer.SELECT,
     )
 
     return perms
 
-def test_user_components_query(perms, users, components, db, mixer):
-    c = components[0]
+def test_user_collections_query(perms, users, collections, db, mixer):
+    c = collections[0]
     u = users[0]
 
     # ensure user has at least one read permission
     perm_id = mixer.blend(
-        UserComponentPermission, user=u, component=c, permission='read'
+        UserCollectionPermission, user=u, collection=c, permission='read'
     ).id
 
     # ensure all entities returned by query are valid
-    q = user_components(u, 'read')
-    for _c, _ucp in q.add_entity(UserComponentPermission):
+    q = user_collections(u, 'read')
+    for _c, _ucp in q.add_entity(UserCollectionPermission):
         assert _ucp.permission == 'read'
         assert _ucp.user_id == u.id
 
@@ -43,4 +40,4 @@ def test_user_components_query(perms, users, components, db, mixer):
     assert q.count() > 0
 
     # ensure that the permission we added is included
-    assert q.filter(UserComponentPermission.id == perm_id).count() == 1
+    assert q.filter(UserCollectionPermission.id == perm_id).count() == 1

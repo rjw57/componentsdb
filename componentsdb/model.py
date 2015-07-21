@@ -65,6 +65,11 @@ class Component(db.Model, _MixinsCommon, _MixinEncodable):
     description = db.Column(db.Text)
     datasheet_url = db.Column(db.Text)
 
+class Collection(db.Model, _MixinsCommon, _MixinEncodable):
+    __tablename__ = 'collections'
+
+    name = db.Column(db.Text, nullable=False)
+
 class User(db.Model, _MixinsCommon, _MixinEncodable):
     __tablename__ = 'users'
 
@@ -82,16 +87,16 @@ class User(db.Model, _MixinsCommon, _MixinEncodable):
 
 Permission = db.Enum('create', 'read', 'update', 'delete')
 
-class UserComponentPermission(db.Model, _MixinsCommon):
-    __tablename__ = 'user_component_perms'
+class UserCollectionPermission(db.Model, _MixinsCommon):
+    __tablename__ = 'user_collection_perms'
 
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    component_id = db.Column(
-        db.Integer, db.ForeignKey('components.id'), nullable=False
+    collection_id = db.Column(
+        db.Integer, db.ForeignKey('collections.id'), nullable=False
     )
     permission = db.Column(Permission, nullable=False)
 
     user = db.relationship('User')
-    component = db.relationship('Component')
+    collection = db.relationship('Collection')
 
 

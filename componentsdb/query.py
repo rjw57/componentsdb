@@ -1,8 +1,12 @@
-from componentsdb.model import (
-    Component, UserComponentPermission, User
-)
+"""
+Canned queries on the database
 
-def user_components(user, permission):
-    return Component.query.join(UserComponentPermission).\
-        filter(UserComponentPermission.user==user).\
-        filter(UserComponentPermission.permission==permission)
+"""
+
+from componentsdb.model import Collection, UserCollectionPermission
+
+def user_collections(user, permission):
+    # pylint: disable=no-member
+    return Collection.query.join(UserCollectionPermission).\
+        filter(UserCollectionPermission.user == user).\
+        filter(UserCollectionPermission.permission == permission)

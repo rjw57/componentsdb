@@ -42,17 +42,28 @@ def upgrade():
             server_default=sa.text('CURRENT_TIMESTAMP')),
     )
 
+    op.create_table(
+        'collections',
+        sa.Column('id', sa.Integer, primary_key=True, unique=True,
+            nullable=False),
+        sa.Column('name', sa.Text, nullable=False),
+        sa.Column('created_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+        sa.Column('updated_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+    )
+
     permission_enum = sapg.ENUM(
         'create', 'read', 'update', 'delete',
         name='permission'
     )
 
     op.create_table(
-        'user_component_perms',
+        'user_collection_perms',
         sa.Column('id', sa.Integer, primary_key=True, unique=True, nullable=False),
         sa.Column('user_id', sa.Integer, sa.ForeignKey('users.id'),
             nullable=False),
-        sa.Column('component_id', sa.Integer, sa.ForeignKey('components.id'),
+        sa.Column('collection_id', sa.Integer, sa.ForeignKey('collections.id'),
             nullable=False),
         sa.Column('permission', permission_enum, nullable=False),
         sa.Column('created_at', sa.DateTime, nullable=False,
@@ -83,15 +94,30 @@ def upgrade():
     ''')
 
     op.execute('''
+        CREATE TRIGGER update_collections_updated_at_trigger
+            BEFORE UPDATE ON collections
+            FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
+        ;
+    ''')
+
+    op.execute('''
         CREATE TRIGGER update_users_updated_at_trigger
             BEFORE UPDATE ON users
             FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
         ;
     ''')
 
+    op.execute('''
+        CREATE TRIGGER update_user_collection_perms_updated_at_trigger
+            BEFORE UPDATE ON user_collection_perms
+            FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
+        ;
+    ''')
+
 def downgrade():
-    op.drop_table('user_component_perms')
+    op.drop_table('user_collection_perms')
     op.drop_table('users')
     op.drop_table('components')
+    op.drop_table('collections')
     op.execute('DROP TYPE permission;')
     op.execute('DROP FUNCTION update_updated_at_col() CASCADE;')
