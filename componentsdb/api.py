@@ -4,11 +4,13 @@ JSON API blueprint.
 """
 from functools import wraps
 
-from flask import Blueprint, jsonify, request, url_for
+from flask import Blueprint, jsonify, request, url_for, current_app
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 from componentsdb.app import current_user, set_current_user_with_token
-from componentsdb.model import Collection
+from componentsdb.model import (
+    Collection, Permission, query_user_collections
+)
 
 api = Blueprint('api', __name__)
 
@@ -60,7 +62,25 @@ def collections():
         return jsonify(collection_to_resource(c)), 201
 
     # Treat all other methods as "GET"
-    return jsonify({})
+
+    # Where do we start?
+    page_start = request.args.get('after')
+
+    q = query_user_collections(current_user, Permission.READ)
+    q = q.order_by(Collection.id)
+    if page_start is not None and page_start != '':
+        q = q.filter(Collection.id > Collection.decode_key(page_start))
+    q = q.limit(current_app.config['PAGE_SIZE'])
+
+    cs = list(q)
+    page_end = cs[-1].encoded_key if len(cs) > 0 else page_start
+
+    resources = [collection_to_resource(c) for c in cs]
+    next_url = url_for('api.collections', after=page_end)
+
+    return jsonify(dict(
+        resources=resources, next=next_url,
+    ))
 
 @api.route('/collections/<key>')
 @auth_required

@@ -3,12 +3,16 @@ Test JSON API.
 
 """
 # pylint: disable=redefined-outer-name
+from __future__ import division
+
 import logging
+import math
 import random
 
+import pytest
 from flask import url_for, json
 
-from componentsdb.model import Permission
+from componentsdb.model import Permission, Collection
 
 def _post_json(client, url, data, headers=None):
     """Post JSON encoded data to url via client optionally setting headers."""
@@ -21,6 +25,20 @@ def _put_json(client, url, data, headers=None):
     h = {'Content-Type': 'application/json'}
     h.update(headers)
     return client.put(url, data=json.dumps(data), headers=h)
+
+@pytest.fixture(params=[0, 1e-20, 0.9, 1.1, 1, 2, 2.2, 5])
+def many_collections(mixer, user, app, request):
+    """Create a number of collections numbering around the page size for the
+    fixture user."""
+    n_collections = int(math.ceil(request.param * app.config['PAGE_SIZE']))
+    assert n_collections >= 0
+    logging.info('Creating %s collection(s) for user', n_collections)
+
+    cs = mixer.cycle(n_collections).blend(Collection, name=mixer.FAKE)
+    for c in cs:
+        c.add_all_permissions(user)
+
+    return cs
 
 def test_profile_needs_auth(client):
     """Authorisation is needed to get profile."""
@@ -142,3 +160,29 @@ def test_collection_list_succeeds(client, user_api_headers):
     )
     assert r.status_code == 200
 
+def test_collection_list_pagination(
+        many_collections, app, client, user_api_headers):
+    cs = many_collections
+    expected_pages = int(math.ceil(len(cs) / app.config['PAGE_SIZE']))
+
+    # Get all pages from resource
+    logging.info('Expected page count: %s', expected_pages)
+
+    n_pages = 0
+    url = url_for('api.collections')
+    while True:
+        r = client.get(url, headers=user_api_headers)
+        assert r.status_code == 200
+        data = r.json
+
+        # Break out when empty page reached
+        if len(data['resources']) == 0 or n_pages > expected_pages:
+            break
+
+        # Follow next URL
+        url = data['next']
+
+        # Increment page count
+        n_pages += 1
+
+    assert n_pages == expected_pages
