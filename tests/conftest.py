@@ -56,6 +56,12 @@ def current_user(user):
     return _current_user
 
 @pytest.fixture
+def user_api_headers(user):
+    """Authorisation headers for a client acting as the fixture user."""
+    t = user.token
+    return {'Authorization': 'Bearer %s' % t.decode('ascii')}
+
+@pytest.fixture
 def component(mixer):
     """A newly inserted component with random values."""
     c = mixer.blend(
