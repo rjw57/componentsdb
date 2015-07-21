@@ -8,11 +8,11 @@ def test_encoded_key(user):
     assert k is not None
 
     # get id from key
-    id = User.decode_key(k)
-    assert id == user.id
+    id_ = User.decode_key(k)
+    assert id_ == user.id
 
 def test_key_encodes_type(user):
     # decoding a User key as a Component should fail
     k = user.encoded_key
     with pytest.raises(TypeError):
-        id = Component.decode_key(k)
+        Component.decode_key(k)

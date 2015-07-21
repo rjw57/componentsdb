@@ -2,16 +2,16 @@
 Test JSON API.
 
 """
-import json
+# pylint: disable=redefined-outer-name
 
 import pytest
 from flask import url_for
 
 @pytest.fixture
-def auth_headers(app, user):
+def auth_headers(user):
     """Create a client authorised as the user fixture."""
     t = user.token
-    return { 'Authorization': 'Bearer %s' % t.decode('ascii') }
+    return {'Authorization': 'Bearer %s' % t.decode('ascii')}
 
 def test_profile_needs_auth(client):
     """Authorisation is needed to get profile."""

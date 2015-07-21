@@ -2,6 +2,8 @@
 Test JWT handling.
 
 """
+# pylint: disable=redefined-outer-name, unused-argument
+
 import datetime
 from contextlib import contextmanager
 
@@ -60,8 +62,8 @@ def test_verify_exp_present(app):
 def test_user_token(user):
     """Users should be able to create tokens which refer to themselves."""
     t = user.token
-    id = User.decode_token(t)
-    assert id == user.id
+    id_ = User.decode_token(t)
+    assert id_ == user.id
 
 def test_verify_user_token(user):
     """Verifying the current token should set current_user."""
