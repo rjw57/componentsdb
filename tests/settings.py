@@ -10,7 +10,6 @@ SECRET_KEY = 'bonjour, monde'
 
 # Configure the testing database. The database URI is specified by the
 # COMPONENTSDB_DATABASE_URI environment variable.
-SQLALCHEMY_ECHO = True
 SQLALCHEMY_DATABASE_URI = os.environ.get(
     'COMPONENTSDB_DATABASE_URI', 'sqlite://'
 )
