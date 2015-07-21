@@ -2,6 +2,8 @@
 Test JSON API.
 
 """
+import json
+
 import pytest
 from flask import url_for
 
@@ -19,3 +21,9 @@ def test_profile_allows_auth(client, auth_headers):
     """Authorisation is suffient to get profile."""
     r = client.get(url_for('api.profile'), headers=auth_headers)
     assert r.status_code == 200
+
+def test_profile_matches_user(user, client, auth_headers):
+    """Profile matches the authorised user."""
+    r = client.get(url_for('api.profile'), headers=auth_headers).json
+    assert 'name' in r
+    assert r['name'] == user.name

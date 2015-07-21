@@ -7,7 +7,7 @@ from functools import wraps
 from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import Unauthorized, BadRequest
 
-from componentsdb.auth import verify_user_token
+from componentsdb.auth import verify_user_token, current_user
 
 api = Blueprint('api', __name__)
 
@@ -33,4 +33,4 @@ def auth_required(f):
 @api.route('/profile')
 @auth_required
 def profile():
-    return jsonify({'foo': 1})
+    return jsonify(dict(name=current_user.name))
