@@ -7,7 +7,6 @@ setup(
     install_requires=[
         'flask',
         'flask-sqlalchemy',
-        'future',
         'psycopg2',
         'pyjwt',
         'sqlalchemy',
