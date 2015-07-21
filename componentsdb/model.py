@@ -25,6 +25,9 @@ def _b64_decode(s):
     padding = 4 - len(s)%4
     return base64.urlsafe_b64decode(s + b'='*padding)
 
+class KeyDecodeError(Exception):
+    pass
+
 class _MixinEncodable(object):
     """A mixin which allows the object to be referenced by an encoded URL-safe
     id.
@@ -42,14 +45,14 @@ class _MixinEncodable(object):
     def decode_key(cls, k):
         """Decode a URL-safe encoded key for this model into a primary key.
 
-        Raises TypeError if the key is correctly encoded but for the wrong
+        Raises KeyDecodeError if the key is correctly encoded but for the wrong
         table.
 
         """
         # pylint: disable=no-member
         d = json.loads(_b64_decode(k.encode('ascii')).decode('utf8'))
         if cls.__tablename__ != d['t']:
-            raise TypeError('key is for incorrect table')
+            raise KeyDecodeError('key is for incorrect table')
         return int(d['id'])
 
 class _MixinsCommon(_MixinCreatedAt, _MixinWithId):

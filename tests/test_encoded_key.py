@@ -1,6 +1,6 @@
 import pytest
 
-from componentsdb.model import User, Component
+from componentsdb.model import User, Component, KeyDecodeError
 
 def test_encoded_key(user):
     # encode the key
@@ -14,5 +14,5 @@ def test_encoded_key(user):
 def test_key_encodes_type(user):
     # decoding a User key as a Component should fail
     k = user.encoded_key
-    with pytest.raises(TypeError):
+    with pytest.raises(KeyDecodeError):
         Component.decode_key(k)
