@@ -10,8 +10,9 @@ import pytest
 from faker import Faker
 from mixer.backend.flask import Mixer
 
-from componentsdb.app import default_app
-from componentsdb.auth import verify_user_token, current_user as _current_user
+from componentsdb.app import (
+    default_app, set_current_user_with_token, current_user as _current_user
+)
 from componentsdb.model import (
     Component, Collection, User, UserCollectionPermission, Permission,
     db as _db,
@@ -55,7 +56,7 @@ def user(mixer):
 @pytest.fixture
 def current_user(user):
     """The fake user "user" authenticated as the current user."""
-    verify_user_token(user.token)
+    set_current_user_with_token(user.token)
     return _current_user
 
 @pytest.fixture

@@ -7,7 +7,7 @@ from functools import wraps
 from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import Unauthorized, BadRequest
 
-from componentsdb.auth import verify_user_token, current_user
+from componentsdb.app import current_user, set_current_user_with_token
 
 api = Blueprint('api', __name__)
 
@@ -25,7 +25,7 @@ def auth_required(f):
         if auth[0].lower() != 'bearer':
             raise BadRequest('Authorization must be bearer token type')
 
-        verify_user_token(auth[1])
+        set_current_user_with_token(auth[1])
 
         return f(*args, **kwargs)
     return decorated

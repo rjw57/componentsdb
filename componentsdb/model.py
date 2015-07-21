@@ -2,15 +2,16 @@
 SQLAlchemy models for the database.
 
 """
-# pylint: disable=too-few-public-methods
-# pylint: disable=no-name-in-module,import-error
+# pylint: disable=too-few-public-methods,no-name-in-module,import-error
 
 import base64
+import datetime
 import enum
 
-from flask import g, json
-from flask.ext.sqlalchemy import SQLAlchemy
+import jwt
 import sqlalchemy.types as types
+from flask import g, json, current_app
+from flask.ext.sqlalchemy import SQLAlchemy
 
 from componentsdb.exception import KeyDecodeError
 
@@ -66,6 +67,27 @@ def _b64_decode(s):
     padding = 4 - len(s)%4
     return base64.urlsafe_b64decode(s + b'='*padding)
 
+_JWT_ALGS = ['HS256']
+_JWT_DEFAULT_EXP_DELTA = datetime.timedelta(hours=1)
+
+def _jwt_encode_dangerous(payload):
+    """Internal JWT encode function. Use jwt_encode() in preference."""
+    secret = current_app.secret_key
+    return jwt.encode(payload, secret, algorithm=_JWT_ALGS[0])
+
+def _jwt_encode(payload):
+    # Make a shallow copy of the payload and set the exp field.
+    p = {}
+    p.update(payload)
+    p['exp'] = datetime.datetime.utcnow() + _JWT_DEFAULT_EXP_DELTA
+    return _jwt_encode_dangerous(p)
+
+def _jwt_decode(token):
+    secret = current_app.secret_key
+    return jwt.decode(
+        token, secret, algorithms=_JWT_ALGS, options=dict(require_exp=True),
+    )
+
 def _decorate_enum_type(enum_class):
     class _EnumTypeDecorator(types.TypeDecorator):
         """A SQLAlchemy TypeDecorator for 3.4-style enums."""
@@ -90,13 +112,11 @@ class User(db.Model, _CommonMixins, _EncodableKeyMixin):
     @property
     def token(self):
         """Return a JWT with this user as a claim."""
-        from componentsdb.auth import jwt_encode
-        return jwt_encode(dict(user=self.id))
+        return _jwt_encode(dict(user=self.id))
 
     @classmethod
     def decode_token(cls, t):
-        from componentsdb.auth import jwt_decode
-        p = jwt_decode(t)
+        p = _jwt_decode(t)
         return int(p['user'])
 
 class Component(db.Model, _CommonMixins, _EncodableKeyMixin):

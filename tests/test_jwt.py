@@ -10,11 +10,11 @@ from contextlib import contextmanager
 import jwt
 import pytest
 
-from componentsdb.auth import (
-    jwt_encode, jwt_decode, _jwt_encode_dangerous, verify_user_token,
-    current_user,
+from componentsdb.app import current_user, set_current_user_with_token
+from componentsdb.model import (
+    User,
+    _jwt_encode, _jwt_decode, _jwt_encode_dangerous
 )
-from componentsdb.model import User
 
 @contextmanager
 def secret(app, new_secret):
@@ -27,23 +27,23 @@ def secret(app, new_secret):
 def test_token_enc_dec(app):
     """Test basic encoding and decoding of token."""
     payload = dict(foo=1)
-    t = jwt_encode(payload)
-    p = jwt_decode(t)
+    t = _jwt_encode(payload)
+    p = _jwt_decode(t)
     assert p['foo'] == 1
 
 def test_token_has_exp(app):
     """Test that token has exp field in payload."""
     payload = dict(foo=1)
-    t = jwt_encode(payload)
-    p = jwt_decode(t)
+    t = _jwt_encode(payload)
+    p = _jwt_decode(t)
     assert 'exp' in p
 
 def test_verify_sig(app):
     """Test that token is verified."""
     payload = dict(foo=1)
-    t = jwt_encode(payload)
+    t = _jwt_encode(payload)
     with secret(app, 'foo'), pytest.raises(jwt.exceptions.DecodeError):
-        jwt_decode(t)
+        _jwt_decode(t)
 
 def test_verify_exp_in_future(app):
     """Test that token expiry is verified as being in future."""
@@ -52,14 +52,14 @@ def test_verify_exp_in_future(app):
     )
     t = _jwt_encode_dangerous(payload)
     with pytest.raises(jwt.exceptions.ExpiredSignatureError):
-        jwt_decode(t)
+        _jwt_decode(t)
 
 def test_verify_exp_present(app):
     """Test that token expiry is verified as being present."""
     payload = dict(foo=1)
     t = _jwt_encode_dangerous(payload)
     with pytest.raises(jwt.exceptions.MissingRequiredClaimError):
-        jwt_decode(t)
+        _jwt_decode(t)
 
 def test_user_token(user):
     """Users should be able to create tokens which refer to themselves."""
@@ -72,6 +72,6 @@ def test_verify_user_token(user):
     # NB: not "is None" since current_user is a proxy
     assert current_user == None
     t = user.token
-    verify_user_token(t)
+    set_current_user_with_token(t)
     assert current_user.id == user.id
 
