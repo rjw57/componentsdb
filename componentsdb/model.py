@@ -94,6 +94,29 @@ class Collection(db.Model, _MixinsCommon, _MixinEncodable):
         UserCollectionPermission.query.\
             filter(UserCollectionPermission.id.in_(s)).delete(False)
 
+    # Below we need to import current_user within the function since auth itself
+    # imports this module.
+
+    @property
+    def can_create(self):
+        from componentsdb.auth import current_user
+        return self.has_permission(current_user, Permission.CREATE)
+
+    @property
+    def can_read(self):
+        from componentsdb.auth import current_user
+        return self.has_permission(current_user, Permission.READ)
+
+    @property
+    def can_update(self):
+        from componentsdb.auth import current_user
+        return self.has_permission(current_user, Permission.UPDATE)
+
+    @property
+    def can_delete(self):
+        from componentsdb.auth import current_user
+        return self.has_permission(current_user, Permission.DELETE)
+
 class User(db.Model, _MixinsCommon, _MixinEncodable):
     __tablename__ = 'users'
 

@@ -1,20 +1,23 @@
+# pylint: disable=redefined-outer-name
+
 import pytest
 
 from componentsdb.model import (
     Collection, User, UserCollectionPermission, Permission
 )
-from componentsdb.query import *
+from componentsdb.query import user_collections
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def collections(mixer):
     return mixer.cycle(5).blend(Collection, name=mixer.FAKE)
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def users(mixer):
     return mixer.cycle(5).blend(User, name=mixer.FAKE)
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def perms(mixer, users, collections):
+    # pylint: disable=unused-argument
     perms = mixer.cycle(15).blend(
         UserCollectionPermission,
         user=mixer.SELECT,
@@ -24,8 +27,8 @@ def perms(mixer, users, collections):
     return perms
 
 def test_user_collections_query(perms, users, collections, db, mixer):
-    c = collections[0]
-    u = users[0]
+    # pylint: disable=unused-argument
+    c, u = collections[0], users[0]
 
     # ensure user has at least one read permission
     perm_id = mixer.blend(
@@ -34,7 +37,7 @@ def test_user_collections_query(perms, users, collections, db, mixer):
 
     # ensure all entities returned by query are valid
     q = user_collections(u, 'read')
-    for _c, _ucp in q.add_entity(UserCollectionPermission):
+    for _, _ucp in q.add_entity(UserCollectionPermission):
         assert _ucp.permission == 'read'
         assert _ucp.user_id == u.id
 
@@ -99,3 +102,37 @@ def test_removes_all_permissions(user, collection):
     assert collection.has_permission(user, Permission.READ)
     collection.remove_permission(user, Permission.READ)
     assert not collection.has_permission(user, Permission.READ)
+
+def test_can_create(current_user, collection):
+    """Test can_create helper."""
+    assert not collection.can_create
+    collection.add_permission(current_user, Permission.CREATE)
+    assert collection.can_create
+    collection.remove_permission(current_user, Permission.CREATE)
+    assert not collection.can_create
+
+def test_can_read(current_user, collection):
+    """Test can_read helper."""
+    assert not collection.can_read
+    collection.add_permission(current_user, Permission.READ)
+    assert collection.can_read
+    collection.remove_permission(current_user, Permission.READ)
+    assert not collection.can_read
+
+def test_can_update(current_user, collection):
+    """Test can_update helper."""
+    assert not collection.can_update
+    collection.add_permission(current_user, Permission.UPDATE)
+    assert collection.can_update
+    collection.remove_permission(current_user, Permission.UPDATE)
+    assert not collection.can_update
+
+def test_can_delete(current_user, collection):
+    """Test can_delete helper."""
+    assert not collection.can_delete
+    collection.add_permission(current_user, Permission.DELETE)
+    assert collection.can_delete
+    collection.remove_permission(current_user, Permission.DELETE)
+    assert not collection.can_delete
+
+

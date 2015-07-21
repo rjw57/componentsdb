@@ -11,6 +11,7 @@ from faker import Faker
 from mixer.backend.flask import Mixer
 
 from componentsdb.app import default_app, db as _db
+from componentsdb.auth import verify_user_token, current_user as _current_user
 from componentsdb.model import (
     Component, Collection, User, UserCollectionPermission
 )
@@ -47,6 +48,12 @@ def mixer(app):
 def user(mixer):
     """A fake test user."""
     return mixer.blend(User)
+
+@pytest.fixture
+def current_user(user):
+    """The fake user "user" authenticated as the current user."""
+    verify_user_token(user.token)
+    return _current_user
 
 @pytest.fixture
 def component(mixer):
