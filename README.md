@@ -1,3 +1,9 @@
+[![Build
+Status](https://travis-ci.org/rjw57/componentsdb.svg?branch=master)](https://travis-ci.org/rjw57/componentsdb)
+[![Coverage
+Status](https://coveralls.io/repos/rjw57/componentsdb/badge.svg?branch=master&service=github)](https://coveralls.io/github/rjw57/componentsdb?branch=master)
+
+
 ## Testing environment
 
 The requirements for the testing environment are listed in
