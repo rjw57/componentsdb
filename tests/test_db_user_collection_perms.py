@@ -3,9 +3,9 @@
 import pytest
 
 from componentsdb.model import (
-    Collection, User, UserCollectionPermission, Permission
+    Collection, User, UserCollectionPermission, Permission,
+    query_user_collections,
 )
-from componentsdb.query import user_collections
 
 @pytest.fixture
 def collections(mixer):
@@ -35,7 +35,7 @@ def test_user_collections_query(perms, users, collections, db, mixer):
     ).id
 
     # ensure all entities returned by query are valid
-    q = user_collections(u, Permission.READ)
+    q = query_user_collections(u, Permission.READ)
     for _, _ucp in q.add_entity(UserCollectionPermission):
         assert _ucp.permission == Permission.READ
         assert _ucp.user_id == u.id

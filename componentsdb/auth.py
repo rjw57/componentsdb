@@ -4,6 +4,8 @@ import jwt
 from flask import g as _flask_g, current_app
 from werkzeug.local import LocalProxy
 
+from componentsdb.model import User
+
 # A proxy for the current user.
 current_user = LocalProxy(
     lambda: _flask_g.get('current_user', None)
@@ -16,7 +18,6 @@ def verify_user_token(token):
 
     """
     # pylint: disable=no-member
-    from componentsdb.model import User
     u = User.query.get_or_404(User.decode_token(token))
     _flask_g.current_user = u
 
