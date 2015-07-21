@@ -44,7 +44,7 @@ def auth_required(f):
 def profile():
     return jsonify(dict(name=current_user.name))
 
-@api.route('/collections', methods=['POST'])
+@api.route('/collections', methods=['GET', 'POST'])
 @auth_required
 def collections():
     if request.method == 'POST':
@@ -61,7 +61,7 @@ def collections():
         )), 201
 
     # Treat all other methods as "GET"
-    raise MethodNotAllowed
+    return jsonify({})
 
 @api.route('/collections/<key>')
 @auth_required

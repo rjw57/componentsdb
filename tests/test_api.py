@@ -52,6 +52,14 @@ def test_collection_create_succeeds(client, user_api_headers):
     )
     assert r.status_code == 201 # created
 
+def test_collection_create_needs_json(client, user_api_headers):
+    """Creating a collection should succeed."""
+    request = dict(name='foobar-%s' % random.random())
+    r = client.post(
+        url_for('api.collections'), data=request, headers=user_api_headers
+    )
+    assert r.status_code == 400 # bad request
+
 def test_collection_create_returns_url(client, user_api_headers):
     """Creating a collection should return a URL to the resource."""
     # pylint: disable=no-member
@@ -117,4 +125,14 @@ def test_collection_get_matched(client, current_user, user_api_headers, collecti
     assert data is not None
 
     assert data['name'] == collection.name
+
+def test_collection_list_needs_auth(client):
+    """Authorisation is needed to list a collection."""
+    assert client.get(url_for('api.collections')).status_code == 401
+
+def test_collection_list_succeeds(client, user_api_headers):
+    r = client.get(
+        url_for('api.collections'), headers=user_api_headers
+    )
+    assert r.status_code == 200
 
