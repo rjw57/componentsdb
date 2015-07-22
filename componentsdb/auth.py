@@ -20,8 +20,8 @@ def _get_default_certs():
 
 def verify_google_id_token(token, client_id):
     """Verify the id token against the Google public keys. Note that this
-    function does *not* validate the audience (aud) or hosted domain (hd)
-    claims. If *does* verify the issuer (iss) claim.
+    function does *not* validate the hosted domain (hd) claim. It *does* verify
+    the issuer (iss) claim.
 
     If verification fails, an oauth2client.crypt.AppIdentityError is raised.
     """
