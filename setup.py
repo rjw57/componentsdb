@@ -8,8 +8,10 @@ setup(
         'enum34',
         'flask',
         'flask-sqlalchemy',
+        'oauth2client',
         'psycopg2',
         'pyjwt',
+        'pyopenssl',
         'sqlalchemy',
     ],
 )

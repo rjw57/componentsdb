@@ -23,7 +23,7 @@ def gen_self_signed_cert():
         _LOG.info('Generating X509 self-signed certificate.')
 
         output = subprocess.check_output(
-            'openssl req -batch -new -newkey rsa:2048 -days 365 -nodes -x509'.split() +
+            'openssl req -sha256 -batch -new -newkey rsa:2048 -days 365 -nodes -x509'.split() +
             ['-keyout', key_fn, '-out', crt_fn],
             stderr=subprocess.STDOUT, cwd=d
         )
@@ -32,7 +32,7 @@ def gen_self_signed_cert():
             _LOG.info(l.decode('utf8'))
 
         with open(key_fn) as k, open(crt_fn) as c:
-            return k.read(), c.read()
+            return c.read(), k.read()
 
 def main():
     logging.basicConfig(level=logging.INFO)
