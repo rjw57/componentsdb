@@ -24,5 +24,6 @@ SQLALCHEMY_ECHO = True
 
 _cert, _key = gen_self_signed_cert()
 GOOGLE_OAUTH2_CERTS = {'selfsigned': _cert}
+GOOGLE_OAUTH2_ALLOWED_CLIENT_IDS = ['my-client']
 TESTING_GOOGLE_OAUTH2_CERT_PRIV_KEYS = {'selfsigned': _key}
 

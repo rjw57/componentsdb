@@ -18,7 +18,7 @@ def _get_default_certs():
 
     raise HTTPException(status_code=r.status) # pragma: no cover
 
-def verify_google_id_token(token, client_id):
+def verify_google_id_token(token):
     """Verify the id token against the Google public keys. Note that this
     function does *not* validate the hosted domain (hd) claim. It *does* verify
     the issuer (iss) claim.
@@ -26,7 +26,10 @@ def verify_google_id_token(token, client_id):
     If verification fails, an oauth2client.crypt.AppIdentityError is raised.
     """
     certs = current_app.config.get('GOOGLE_OAUTH2_CERTS', _get_default_certs())
-    idinfo = crypt.verify_signed_jwt_with_certs(token, certs, client_id)
+    client_ids = current_app.config.get('GOOGLE_OAUTH2_ALLOWED_CLIENT_IDS', [])
+    idinfo = crypt.verify_signed_jwt_with_certs(token, certs, None)
+    if idinfo.get('aud') not in client_ids:
+        raise crypt.AppIdentityError('invalid aud: %s' % idinfo.get('aud'))
     if idinfo.get('iss') not in _GOOGLE_ISSUERS:
         raise crypt.AppIdentityError('invalid issuer: %s' % idinfo.get('iss'))
     return idinfo
