@@ -198,20 +198,6 @@ def upgrade():
             FROM    user_collection_perms
             WHERE   collection_id = $1 AND user_id = $2 AND permission = $3;
         $$ LANGUAGE sql;
-
-        -- Return a set of collections which the user has the specified
-        -- permission on.
-        CREATE FUNCTION user_collections_with_permission(
-            p_user_id bigint, p_permission permission
-        )
-        RETURNS SETOF collections AS $$
-            SELECT DISTINCT collections.*
-            FROM
-                collections
-                JOIN user_collection_perms ON collection_id = collections.id
-            WHERE user_id = p_user_id AND permission = p_permission
-            ORDER BY collections.id;
-        $$ LANGUAGE sql;
     ''')
 
 
@@ -229,10 +215,6 @@ def downgrade():
 
         DROP FUNCTION
             collection_user_has_permission(bigint, bigint, permission)
-        CASCADE;
-
-        DROP FUNCTION
-            user_collections_with_permission(bigint, permission)
         CASCADE;
     ''')
 

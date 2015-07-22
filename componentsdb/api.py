@@ -8,9 +8,7 @@ from flask import Blueprint, jsonify, request, url_for, current_app
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 from componentsdb.app import current_user, set_current_user_with_token
-from componentsdb.model import (
-    Collection, Permission, query_user_collections
-)
+from componentsdb.model import Collection, Permission
 
 api = Blueprint('api', __name__)
 
@@ -56,9 +54,11 @@ def profile():
 @api.route('/collections', methods=['GET', 'PUT'])
 @auth_required
 def collections():
+    # pylint: disable=no-member
+    q = Collection.query
+
     if request.method == 'PUT':
-        # pylint: disable=no-member
-        c = Collection.query.get_or_404(Collection.create(_get_json_or_400()))
+        c = q.get_or_404(Collection.create(_get_json_or_400()))
         return jsonify(collection_to_resource(c)), 201
 
     # Treat all other methods as "GET"
@@ -66,8 +66,7 @@ def collections():
     # Where do we start?
     page_start = request.args.get('after')
 
-    q = query_user_collections(current_user, Permission.READ)
-    q = q.order_by(Collection.id)
+    q = q.with_permission(Permission.READ).order_by(Collection.id)
     if page_start is not None and page_start != '':
         q = q.filter(Collection.id > Collection.decode_key(page_start))
     q = q.limit(current_app.config['PAGE_SIZE'])

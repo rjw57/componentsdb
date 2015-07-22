@@ -11,7 +11,7 @@ import enum
 import jwt
 from flask import g, json, current_app
 from flask.ext.sqlalchemy import SQLAlchemy
-from sqlalchemy import func, types
+from sqlalchemy import func, types, type_coerce
 
 from componentsdb.exception import KeyDecodeError, KeyEncodeError
 
@@ -132,20 +132,27 @@ class Component(db.Model, _CommonMixins, _EncodableKeyMixin):
 class _CollectionQuery(db.Query):
     # pylint: disable=no-init
 
-    @classmethod
-    def get_for_user_or_404(cls, user, id_):
+    def get_for_user_or_404(self, user, id_):
         """Get the collection specified by id but only if the user has read
         permissions."""
-        # pylint: disable=no-member
-        return Collection.query.\
-            select_entity_from(func.user_collections_with_permission(
-                user.id, Permission.READ.value
-            )).\
+        return self.with_user_permission(user, Permission.READ).\
             filter(Collection.id == id_).first_or_404()
 
-    @classmethod
-    def get_for_current_user_or_404(cls, id_):
-        return cls.get_for_user_or_404(g.current_user, id_)
+    def get_for_current_user_or_404(self, id_):
+        """Get collection specified by id but only if the current user has
+        read permissions."""
+        return self.get_for_user_or_404(g.current_user, id_)
+
+    def with_user_permission(self, user, perm):
+        """Query collections where user has specified permission."""
+        # pylint: disable=no-member
+        return self.join(UserCollectionPermission).\
+            filter(UserCollectionPermission.user_id == user.id).\
+            filter(UserCollectionPermission.permission == perm)
+
+    def with_permission(self, perm):
+        """Query collections where *current* user has specified permission."""
+        return self.with_user_permission(g.current_user, perm)
 
 class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
     __tablename__ = 'collections'
@@ -167,13 +174,13 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
     def has_permission(self, user, perm):
         """Return True iff the user has permission perm on this collection."""
         return db.session.query(func.collection_user_has_permission(
-            self.id, user.id, perm.value
+            self.id, user.id, type_coerce(perm, _PermissionType)
         )).one()[0]
 
     def add_permission(self, user, perm):
         """Add the permission perm on this collection to user user."""
         db.session.query(func.collection_add_permission(
-            self.id, user.id, perm.value
+            self.id, user.id, type_coerce(perm, _PermissionType)
         )).one()
 
     def add_all_permissions(self, user):
@@ -183,7 +190,7 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
 
     def remove_permission(self, user, perm):
         db.session.query(func.collection_remove_permission(
-            self.id, user.id, perm.value
+            self.id, user.id, type_coerce(perm, _PermissionType)
         )).one()
 
     @property
@@ -222,11 +229,3 @@ class UserCollectionPermission(db.Model, _CommonMixins):
 
     user = db.relationship('User')
     collection = db.relationship('Collection')
-
-# Canned queries
-
-def query_user_collections(user, permission):
-    # pylint: disable=no-member
-    return Collection.query.join(UserCollectionPermission).\
-        filter(UserCollectionPermission.user == user).\
-        filter(UserCollectionPermission.permission == permission)

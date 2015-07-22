@@ -13,3 +13,4 @@ SECRET_KEY = 'bonjour, monde'
 SQLALCHEMY_DATABASE_URI = os.environ.get(
     'COMPONENTSDB_DATABASE_URI', 'sqlite://'
 )
+SQLALCHEMY_ECHO = True

@@ -4,7 +4,6 @@ import pytest
 
 from componentsdb.model import (
     Collection, User, UserCollectionPermission, Permission,
-    query_user_collections,
 )
 
 @pytest.fixture
@@ -23,28 +22,6 @@ def perms(mixer, users, collections):
     )
 
     return perms
-
-def test_user_collections_query(perms, users, collections, db, mixer):
-    # pylint: disable=unused-argument
-    c, u = collections[0], users[0]
-
-    # ensure user has at least one read permission
-    perm_id = mixer.blend(
-        UserCollectionPermission, user=u, collection=c,
-        permission=Permission.READ
-    ).id
-
-    # ensure all entities returned by query are valid
-    q = query_user_collections(u, Permission.READ)
-    for _, _ucp in q.add_entity(UserCollectionPermission):
-        assert _ucp.permission == Permission.READ
-        assert _ucp.user_id == u.id
-
-    # ensure at least one entity returned
-    assert q.count() > 0
-
-    # ensure that the permission we added is included
-    assert q.filter(UserCollectionPermission.id == perm_id).count() == 1
 
 def test_has_permission(user, collection):
     # User should have no permissions on the new collection
@@ -145,5 +122,3 @@ def test_can_delete(current_user, collection):
     assert collection.can_delete
     collection.remove_permission(current_user, Permission.DELETE)
     assert not collection.can_delete
-
-
