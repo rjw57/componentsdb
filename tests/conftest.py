@@ -15,7 +15,7 @@ from componentsdb.app import (
 )
 from componentsdb.model import (
     Component, Collection, User, UserCollectionPermission, Permission,
-    db as _db,
+    UserIdentity, db as _db,
 )
 
 _app = default_app()
@@ -84,4 +84,10 @@ def collection(mixer):
 def user_collection_permission(mixer, user, collection):
     """A newly inserted collection with random values."""
     c = mixer.blend(UserCollectionPermission, user=user, collection=collection)
+    return c
+
+@pytest.fixture
+def user_identity(mixer, user):
+    """A newly inserted identity with random values."""
+    c = mixer.blend(UserIdentity, user=user)
     return c

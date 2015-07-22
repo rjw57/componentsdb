@@ -229,3 +229,12 @@ class UserCollectionPermission(db.Model, _CommonMixins):
 
     user = db.relationship('User')
     collection = db.relationship('Collection')
+
+class UserIdentity(db.Model, _CommonMixins):
+    __tablename__ = 'user_identities'
+
+    user_id = db.Column(db.BigInteger, db.ForeignKey('users.id'), nullable=False)
+    provider = db.Column(db.Text, nullable=False)
+    provider_identity = db.Column(db.Text, nullable=False)
+
+    user = db.relationship('User')

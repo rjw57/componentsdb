@@ -72,6 +72,19 @@ def upgrade():
             server_default=sa.text('CURRENT_TIMESTAMP')),
     )
 
+    op.create_table(
+        'user_identities',
+        sa.Column('id', sa.BigInteger, primary_key=True, unique=True, nullable=False),
+        sa.Column('user_id', sa.BigInteger, sa.ForeignKey('users.id'),
+            nullable=False),
+        sa.Column('provider', sa.Text, nullable=False),
+        sa.Column('provider_identity', sa.Text, nullable=False),
+        sa.Column('created_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+        sa.Column('updated_at', sa.DateTime, nullable=False,
+            server_default=sa.text('CURRENT_TIMESTAMP')),
+    )
+
     # If this were anything other than the base migration, this is how you'd
     # backfill rows.
     ## op.execute('UPDATE components SET updated_at=CURRENT_TIMESTAMP;')
@@ -102,6 +115,11 @@ def upgrade():
 
         CREATE TRIGGER update_user_collection_perms_updated_at_trigger
             BEFORE UPDATE ON user_collection_perms
+            FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
+        ;
+
+        CREATE TRIGGER update_user_identities_updated_at_trigger
+            BEFORE UPDATE ON user_identities
             FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
         ;
     ''')
@@ -220,6 +238,7 @@ def downgrade():
 
     op.execute('DROP FUNCTION update_updated_at_col() CASCADE;')
 
+    op.drop_table('user_identities')
     op.drop_table('user_collection_perms')
     op.drop_table('users')
     op.drop_table('components')

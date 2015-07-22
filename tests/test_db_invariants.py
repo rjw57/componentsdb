@@ -5,7 +5,8 @@ Tests the basic database invariants and constraints.
 import logging
 
 from componentsdb.model import (
-    Component, User, Collection, UserCollectionPermission, Permission
+    Component, User, Collection, UserCollectionPermission, Permission,
+    UserIdentity
 )
 
 def test_component_created_at(component):
@@ -142,5 +143,48 @@ def test_user_collection_permission_updated_at(db, user_collection_permission):
     )
     logging.info(
         'user_collection_permission %s updated_at=%s', c.id, c.updated_at
+    )
+    assert c.updated_at > c.created_at
+
+def test_user_identity_created_at(user_identity):
+    """Assert created_at column is non-null in newly created
+    user_identities and that updated_at matches it."""
+    # Retrieve user_identity
+    c = UserIdentity.query.get(user_identity.id)
+    assert c is not None
+
+    # Check created at
+    logging.info(
+        'user_identity %s created with created_at=%s',
+        c.id, c.created_at
+    )
+    assert c.created_at is not None
+
+    # Check updated_at
+    logging.info(
+        'user_identity %s updated with updated_at=%s',
+        c.id, c.updated_at
+    )
+    assert c.updated_at == c.created_at
+
+def test_user_identity_updated_at(db, user_identity):
+    """Assert updated_at column is automatically updated by database."""
+    # Update
+    c = UserIdentity.query.get(user_identity.id)
+
+    new_p = c.provider + 'some-other-provider'
+    c.provider = new_p
+    db.session.add(c)
+    db.session.commit()
+
+    # Retrieve
+    c = UserIdentity.query.get(c.id)
+    assert c.provider == new_p
+
+    logging.info(
+        'user_identity %s created_at=%s', c.id, c.created_at
+    )
+    logging.info(
+        'user_identity %s updated_at=%s', c.id, c.updated_at
     )
     assert c.updated_at > c.created_at
