@@ -9,10 +9,9 @@ import datetime
 import enum
 
 import jwt
-import sqlalchemy.types as types
 from flask import g, json, current_app
-from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
-from werkzeug.exceptions import NotFound
+from flask.ext.sqlalchemy import SQLAlchemy
+from sqlalchemy import func, types
 
 from componentsdb.exception import KeyDecodeError, KeyEncodeError
 
@@ -21,7 +20,7 @@ db = SQLAlchemy()
 # Mixin classes for common model functionality
 
 class _IdMixin(object):
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.BigInteger, primary_key=True)
 
 class _TimestampsMixin(object):
     created_at = db.Column(db.DateTime, server_default=db.FetchedValue())
@@ -130,20 +129,23 @@ class Component(db.Model, _CommonMixins, _EncodableKeyMixin):
     description = db.Column(db.Text)
     datasheet_url = db.Column(db.Text)
 
-class _CollectionQuery(BaseQuery):
+class _CollectionQuery(db.Query):
     # pylint: disable=no-init
 
-    def get_for_user_or_404(self, user, id_):
+    @classmethod
+    def get_for_user_or_404(cls, user, id_):
         """Get the collection specified by id but only if the user has read
         permissions."""
         # pylint: disable=no-member
-        c = self.get_or_404(id_)
-        if c is None or not c.has_permission(user, Permission.READ):
-            raise NotFound
-        return c
+        return Collection.query.\
+            select_entity_from(func.user_collections_with_permission(
+                user.id, Permission.READ.value
+            )).\
+            filter(Collection.id == id_).first_or_404()
 
-    def get_for_current_user_or_404(self, id_):
-        return self.get_for_user_or_404(g.current_user, id_)
+    @classmethod
+    def get_for_current_user_or_404(cls, id_):
+        return cls.get_for_user_or_404(g.current_user, id_)
 
 class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
     __tablename__ = 'collections'
@@ -154,23 +156,25 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
     @classmethod
     def create(cls, body):
         """Create a new collection as the current user using the resource
-        spcified in the dict-like body. Raises a HTTPException on error."""
-        c = Collection(name=body.get('name'))
-        c.add_all_permissions(g.current_user)
-        db.session.add(c)
-        db.session.commit()
-        return c
+        specified in the dict-like body. Raises a HTTPException on error.
+        Returns the id of the new collection/
+
+        """
+        return db.session.query(func.collection_create(
+            g.current_user.id, body.get('name')
+        )).one()[0]
 
     def has_permission(self, user, perm):
         """Return True iff the user has permission perm on this collection."""
-        return query_collection_user_permissions(self, user, perm).\
-            limit(1).count() > 0
+        return db.session.query(func.collection_user_has_permission(
+            self.id, user.id, perm.value
+        )).one()[0]
 
     def add_permission(self, user, perm):
         """Add the permission perm on this collection to user user."""
-        db.session.add(UserCollectionPermission(
-            user=user, collection=self, permission=perm
-        ))
+        db.session.query(func.collection_add_permission(
+            self.id, user.id, perm.value
+        )).one()
 
     def add_all_permissions(self, user):
         """Add all permissions to user on this collection."""
@@ -178,11 +182,9 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
             self.add_permission(user, p)
 
     def remove_permission(self, user, perm):
-        # pylint: disable=no-member
-        s = query_collection_user_permissions(self, user, perm).\
-            with_entities(UserCollectionPermission.id)
-        UserCollectionPermission.query.\
-            filter(UserCollectionPermission.id.in_(s)).delete(False)
+        db.session.query(func.collection_remove_permission(
+            self.id, user.id, perm.value
+        )).one()
 
     @property
     def can_create(self):
@@ -212,9 +214,9 @@ _PermissionType = _decorate_enum_type(Permission)
 class UserCollectionPermission(db.Model, _CommonMixins):
     __tablename__ = 'user_collection_perms'
 
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.BigInteger, db.ForeignKey('users.id'), nullable=False)
     collection_id = db.Column(
-        db.Integer, db.ForeignKey('collections.id'), nullable=False
+        db.BigInteger, db.ForeignKey('collections.id'), nullable=False
     )
     permission = db.Column(_PermissionType, nullable=False)
 
@@ -228,10 +230,3 @@ def query_user_collections(user, permission):
     return Collection.query.join(UserCollectionPermission).\
         filter(UserCollectionPermission.user == user).\
         filter(UserCollectionPermission.permission == permission)
-
-def query_collection_user_permissions(self, user, perm):
-    q = UserCollectionPermission.query # pylint: disable=no-member
-    q = q.filter(UserCollectionPermission.user_id == user.id)
-    q = q.join(Collection).filter(Collection.id == self.id)
-    q = q.filter(UserCollectionPermission.permission == perm)
-    return q

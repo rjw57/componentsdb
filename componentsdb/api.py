@@ -57,8 +57,8 @@ def profile():
 @auth_required
 def collections():
     if request.method == 'PUT':
-        # create a collection and assign the current user all permissions
-        c = Collection.create(_get_json_or_400())
+        # pylint: disable=no-member
+        c = Collection.query.get_or_404(Collection.create(_get_json_or_400()))
         return jsonify(collection_to_resource(c)), 201
 
     # Treat all other methods as "GET"

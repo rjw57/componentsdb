@@ -20,7 +20,7 @@ def upgrade():
     # Create tables
     op.create_table(
         'components',
-        sa.Column('id', sa.Integer, primary_key=True, unique=True,
+        sa.Column('id', sa.BigInteger, primary_key=True, unique=True,
             nullable=False),
         sa.Column('code', sa.Text),
         sa.Column('description', sa.Text),
@@ -33,7 +33,7 @@ def upgrade():
 
     op.create_table(
         'users',
-        sa.Column('id', sa.Integer, primary_key=True, unique=True,
+        sa.Column('id', sa.BigInteger, primary_key=True, unique=True,
             nullable=False),
         sa.Column('name', sa.Text, nullable=False),
         sa.Column('created_at', sa.DateTime, nullable=False,
@@ -44,7 +44,7 @@ def upgrade():
 
     op.create_table(
         'collections',
-        sa.Column('id', sa.Integer, primary_key=True, unique=True,
+        sa.Column('id', sa.BigInteger, primary_key=True, unique=True,
             nullable=False),
         sa.Column('name', sa.Text, nullable=False),
         sa.Column('created_at', sa.DateTime, nullable=False,
@@ -60,10 +60,10 @@ def upgrade():
 
     op.create_table(
         'user_collection_perms',
-        sa.Column('id', sa.Integer, primary_key=True, unique=True, nullable=False),
-        sa.Column('user_id', sa.Integer, sa.ForeignKey('users.id'),
+        sa.Column('id', sa.BigInteger, primary_key=True, unique=True, nullable=False),
+        sa.Column('user_id', sa.BigInteger, sa.ForeignKey('users.id'),
             nullable=False),
-        sa.Column('collection_id', sa.Integer, sa.ForeignKey('collections.id'),
+        sa.Column('collection_id', sa.BigInteger, sa.ForeignKey('collections.id'),
             nullable=False),
         sa.Column('permission', permission_enum, nullable=False),
         sa.Column('created_at', sa.DateTime, nullable=False,
@@ -78,12 +78,12 @@ def upgrade():
 
     # Add a trigger to automatically update the updated_at column on update.
     op.execute('''
-        CREATE FUNCTION update_updated_at_col() RETURNS TRIGGER AS '
+        CREATE FUNCTION update_updated_at_col() RETURNS TRIGGER AS $$
             BEGIN
                 NEW.updated_at = NOW();
                 RETURN NEW;
             END
-        ' LANGUAGE 'plpgsql';
+        $$ LANGUAGE plpgsql;
 
         CREATE TRIGGER update_components_updated_at_trigger
             BEFORE UPDATE ON components
@@ -106,13 +106,141 @@ def upgrade():
         ;
     ''')
 
+    # Stored functions for some CRUD operations.
+    op.execute('''
+        -- Creates a collection owned by a user.
+        --
+        -- Arguments:
+        --  user_id: the primary key corresponding to some user
+        --  name: the name of the new collection
+        --
+        -- Returns: the primary key of the new collection
+        --
+        -- The collection is created with user_id having all -- permissions.
+        CREATE FUNCTION
+            collection_create(p_user_id bigint, p_name text)
+        RETURNS bigint AS $$
+        DECLARE
+            v_collection_id bigint;
+            v_perm permission;
+        BEGIN
+            -- create the new collection
+            INSERT INTO collections (name)
+            VALUES      (p_name)
+            RETURNING   id INTO v_collection_id;
 
+            -- add permissions
+            FOREACH v_perm IN ARRAY enum_range(null::permission) LOOP
+                PERFORM collection_add_permission(
+                    v_collection_id, p_user_id, v_perm
+                );
+            END LOOP;
+
+            RETURN v_collection_id;
+        END
+        $$ LANGUAGE plpgsql;
+
+        -- Adds a permission for a user to a collection.
+        --
+        -- Arguments:
+        --  collection_id: the primary key corresponding to the collection
+        --  user_id: the primary key of the user whose permission should be
+        --      added.
+        --  permission: the permission to add
+        --
+        -- Returns: the primary key of the new permission.
+        CREATE FUNCTION collection_add_permission(
+            collection_id bigint, user_id bigint, permission permission
+        )
+        RETURNS bigint AS $$
+            INSERT INTO user_collection_perms
+                (collection_id, user_id, permission)
+            VALUES ($1, $2, $3)
+            RETURNING id;
+        $$ LANGUAGE sql;
+
+        -- Removes a permission for a user from a collection.
+        --
+        -- Arguments:
+        --  collection_id: the primary key corresponding to the collection
+        --  user_id: the primary key of the user whose permission should be
+        --      remove.
+        --  permission: the permission to remove
+        --
+        -- Returns: the number of rows which were deleted.
+        CREATE FUNCTION collection_remove_permission(
+            collection_id bigint, user_id bigint, permission permission
+        )
+        RETURNS bigint AS $$
+            WITH deleted AS (
+                DELETE FROM user_collection_perms
+                WHERE
+                    collection_id = $1 AND user_id = $2
+                    AND permission = $3
+                RETURNING *
+            ) SELECT count(*) FROM deleted;
+        $$ LANGUAGE sql;
+
+        -- Determine if a user has a given permission on a collection.
+        --
+        -- Arguments:
+        --  collection_id: the primary key corresponding to the collection
+        --  user_id: the primary key of the user whose permissions should be
+        --      examined.
+        --  permission: the permission to query
+        --
+        -- Returns: a boolean indicating if the user has this permission
+        CREATE FUNCTION collection_user_has_permission(
+            collection_id bigint, user_id bigint, permission permission
+        )
+        RETURNS boolean AS $$
+            SELECT  COUNT(id) > 0
+            FROM    user_collection_perms
+            WHERE   collection_id = $1 AND user_id = $2 AND permission = $3;
+        $$ LANGUAGE sql;
+
+        -- Return a set of collections which the user has the specified
+        -- permission on.
+        CREATE FUNCTION user_collections_with_permission(
+            p_user_id bigint, p_permission permission
+        )
+        RETURNS SETOF collections AS $$
+            SELECT DISTINCT collections.*
+            FROM
+                collections
+                JOIN user_collection_perms ON collection_id = collections.id
+            WHERE user_id = p_user_id AND permission = p_permission
+            ORDER BY collections.id;
+        $$ LANGUAGE sql;
+    ''')
 
 
 def downgrade():
+    op.execute('''
+        DROP FUNCTION collection_create(bigint, text) CASCADE;
+
+        DROP FUNCTION
+            collection_add_permission(bigint, bigint, permission)
+        CASCADE;
+
+        DROP FUNCTION
+            collection_remove_permission(bigint, bigint, permission)
+        CASCADE;
+
+        DROP FUNCTION
+            collection_user_has_permission(bigint, bigint, permission)
+        CASCADE;
+
+        DROP FUNCTION
+            user_collections_with_permission(bigint, permission)
+        CASCADE;
+    ''')
+
+    op.execute('DROP FUNCTION update_updated_at_col() CASCADE;')
+
     op.drop_table('user_collection_perms')
     op.drop_table('users')
     op.drop_table('components')
     op.drop_table('collections')
+
     op.execute('DROP TYPE permission;')
-    op.execute('DROP FUNCTION update_updated_at_col() CASCADE;')
