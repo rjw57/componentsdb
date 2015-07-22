@@ -84,35 +84,30 @@ def upgrade():
                 RETURN NEW;
             END
         ' LANGUAGE 'plpgsql';
-    ''')
 
-    op.execute('''
         CREATE TRIGGER update_components_updated_at_trigger
             BEFORE UPDATE ON components
             FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
         ;
-    ''')
 
-    op.execute('''
         CREATE TRIGGER update_collections_updated_at_trigger
             BEFORE UPDATE ON collections
             FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
         ;
-    ''')
 
-    op.execute('''
         CREATE TRIGGER update_users_updated_at_trigger
             BEFORE UPDATE ON users
             FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
         ;
-    ''')
 
-    op.execute('''
         CREATE TRIGGER update_user_collection_perms_updated_at_trigger
             BEFORE UPDATE ON user_collection_perms
             FOR EACH ROW EXECUTE PROCEDURE update_updated_at_col()
         ;
     ''')
+
+
+
 
 def downgrade():
     op.drop_table('user_collection_perms')
