@@ -109,3 +109,8 @@ def collection(key):
     # pylint: disable=no-member
     c = Collection.query.get_for_current_user_or_404(Collection.decode_key(key))
     return render_template('collection.html', collection=c)
+
+@ui.route('/collection')
+@auth_or_signin
+def collection_create():
+    return ''

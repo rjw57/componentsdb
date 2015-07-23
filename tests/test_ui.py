@@ -26,10 +26,13 @@ def auth_client(client, google_id_token):
 def assert_path_equals(url, path):
     assert urlparse(url).path == path
 
-def test_unauth_client_redirects_signin(client):
-    r = client.get(url_for('ui.index'))
+def assert_redirect_to_sign_in(r):
     assert r.status_code == 302
     assert_path_equals(r.headers['Location'], url_for('ui.signin'))
+
+def test_unauth_client_redirects_signin(client):
+    r = client.get(url_for('ui.index'))
+    assert_redirect_to_sign_in(r)
     logging.info(
         'unauthorised get of ui.index redirects to: %s', r.headers['Location']
     )
@@ -95,5 +98,13 @@ def test_collection_with_read_succeeds(auth_client, user, mixer):
     c = mixer.blend(Collection)
     c.add_all_permissions(user)
     r = auth_client.get(url_for('ui.collection', key=c.encoded_key))
+    assert r.status_code == 200
+
+def test_create_collection_needs_auth(client):
+    r = client.get(url_for('ui.collection_create'))
+    assert_redirect_to_sign_in(r)
+
+def test_create_collection_get(auth_client):
+    r = auth_client.get(url_for('ui.collection_create'))
     assert r.status_code == 200
 
