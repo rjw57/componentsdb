@@ -206,6 +206,17 @@ def test_google_user_association(no_user_google_token, user):
     u = user_for_google_id_token(no_user_google_token)
     assert u.id == user.id
 
+def test_google_user_association_requires_sub(app, user, valid_payload):
+    del valid_payload['sub']
+    t = _encode_valid_token(app, valid_payload)
+    with pytest.raises(BadRequest):
+        associate_user_with_google_id(user, t)
+
+def test_google_user_association_requires_valid_token(user, valid_payload):
+    t = _encode_invalid_token(valid_payload)
+    with pytest.raises(BadRequest):
+        associate_user_with_google_id(user, t)
+
 def test_google_user_multiple_association(db, valid_payload, no_user_google_token, user):
     """Repeatedly associating an id only affects one row."""
     # pylint: disable=no-member
