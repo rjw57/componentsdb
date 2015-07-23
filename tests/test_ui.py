@@ -6,7 +6,7 @@ import pytest
 from flask import url_for, session
 
 from componentsdb.app import current_user
-from componentsdb.model import User
+from componentsdb.model import User, Collection
 from componentsdb.ui import AUTH_TOKEN_SESSION_KEY
 
 # Python 3/2 compatibility
@@ -86,4 +86,14 @@ def test_signout(auth_client):
     assert_path_equals(r.headers['Location'], url_for('ui.index'))
     assert session.get(AUTH_TOKEN_SESSION_KEY) is None
 
+def test_collection_without_read_is_404(auth_client, mixer):
+    c = mixer.blend(Collection)
+    r = auth_client.get(url_for('ui.collection', key=c.encoded_key))
+    assert r.status_code == 404
+
+def test_collection_with_read_succeeds(auth_client, user, mixer):
+    c = mixer.blend(Collection)
+    c.add_all_permissions(user)
+    r = auth_client.get(url_for('ui.collection', key=c.encoded_key))
+    assert r.status_code == 200
 

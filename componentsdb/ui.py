@@ -102,3 +102,10 @@ def signout():
     del session[AUTH_TOKEN_SESSION_KEY]
 
     return redirect(redir_url)
+
+@ui.route('/collection/<key>')
+@auth_or_signin
+def collection(key):
+    # pylint: disable=no-member
+    c = Collection.query.get_for_current_user_or_404(Collection.decode_key(key))
+    return render_template('collection.html', collection=c)

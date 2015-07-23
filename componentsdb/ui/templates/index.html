@@ -9,7 +9,11 @@
 
   <ul>
   {% for c in collections %}
-    <li>{{c.name}} at {{c.encoded_key}}</li>
+  <li>
+    <a href="{{url_for('ui.collection', key=c.encoded_key)}}">
+      {{c.name}}
+    </a>
+  </li>
   {% endfor %}
   </ul>
 {% endblock %}
