@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="google-signin-client_id" content="{{config['GOOGLE_CLIENT_ID']}}">
+    <meta name="google-token-exchange-url"
+        content="{{url_for('ui.signin_with_google_token', target=request.args.get('target'))}}">
+</head>
+<body>
+
+<p>
+    <div class="g-signin2" data-onsuccess="onSignIn"></div>
+    <a href="#" onclick="signOut();">Sign out</a>
+</p>
+
+<script src="https://apis.google.com/js/platform.js" async defer></script>
+<script src="{{url_for('ui.static', filename='signin.js')}}"></script>
+
+</body>
+</html>

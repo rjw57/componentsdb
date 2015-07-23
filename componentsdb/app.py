@@ -29,7 +29,9 @@ def init_app(app):
 def register_default_blueprints(app):
     """Register the default set of blueprints."""
     from componentsdb.api import api
+    from componentsdb.ui import ui
     app.register_blueprint(api, url_prefix='/api')
+    app.register_blueprint(ui)
 
 def default_app():
     """Create and return the "default" app resulting from calls to create_app(),

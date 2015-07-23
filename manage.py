@@ -9,10 +9,10 @@ from flask.ext.script import Manager
 
 from componentsdb.app import default_app
 
-# Default to testing environment settings unless told otherwise
+# Default to development environment settings unless told otherwise
 if 'COMPONENTSDB_SETTINGS' not in os.environ:
     os.environ['COMPONENTSDB_SETTINGS'] = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'tests', 'settings.py'
+        os.path.dirname(os.path.abspath(__file__)), 'devsettings.py'
     )
 
 app = default_app()
