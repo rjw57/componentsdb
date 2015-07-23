@@ -13,6 +13,7 @@ setup(
     install_requires=[
         'enum34',
         'flask',
+        'flask-script',
         'flask-sqlalchemy',
         'oauth2client',
         'psycopg2',
