@@ -9,3 +9,6 @@ TESTING = False
 
 # Page size for paginated resources
 PAGE_SIZE = 20
+
+# Auto-commit
+SQLALCHEMY_COMMIT_ON_TEARDOWN=True
