@@ -5,7 +5,7 @@ Traditional Web UI.
 from functools import wraps
 
 from flask import (
-    Blueprint, redirect, url_for, render_template, request, session
+    Blueprint, redirect, url_for, render_template, request, session, g
 )
 from werkzeug.exceptions import BadRequest, Unauthorized
 
@@ -37,6 +37,10 @@ def verify_session():
     if t is None:
         raise Unauthorized('no user token provided')
     set_current_user_with_token(t)
+
+    # Update the token in the session to make sure that the user always has a
+    # good long expiry windows
+    session[AUTH_TOKEN_SESSION_KEY] = g.current_user.token
 
 def auth_or_signin(f):
     """Decorator for a view which re-directs to the sign in page if there is no
