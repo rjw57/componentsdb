@@ -3,7 +3,9 @@ pytest configuration and fixtures
 
 """
 # pylint: disable=redefined-outer-name
+import datetime
 
+import jwt
 import pytest
 
 # pylint: disable=import-error
@@ -13,6 +15,7 @@ from mixer.backend.flask import Mixer
 from componentsdb.app import (
     default_app, set_current_user_with_token, current_user as _current_user
 )
+from componentsdb.auth import associate_user_with_google_id
 from componentsdb.model import (
     Component, Collection, User, UserCollectionPermission, Permission,
     UserIdentity, db as _db,
@@ -93,3 +96,19 @@ def user_identity(mixer, user):
     """A newly inserted identity with random values."""
     c = mixer.blend(UserIdentity, user=user)
     return c
+
+@pytest.fixture
+def google_id_token(app, user, fake):
+    """A google id token for an identity associated with the user fixture."""
+    client_id = app.config['GOOGLE_OAUTH2_ALLOWED_CLIENT_IDS'][0]
+    payload = dict(
+        iat=datetime.datetime.utcnow() - datetime.timedelta(minutes=1),
+        exp=datetime.datetime.utcnow() + datetime.timedelta(hours=1),
+        aud=client_id, iss='accounts.google.com',
+        sub=fake.numerify('################################'),
+        email=fake.safe_email(), email_verified=False,
+    )
+    key = list(app.config.get('TESTING_GOOGLE_OAUTH2_CERT_PRIV_KEYS').values())[0]
+    t = jwt.encode(payload, key, algorithm='RS256').decode('ascii')
+    associate_user_with_google_id(user, t)
+    return t

@@ -11,7 +11,8 @@ from oauth2client.crypt import AppIdentityError
 from werkzeug.exceptions import BadRequest, HTTPException
 
 from componentsdb.auth import (
-    verify_google_id_token, _get_default_certs, user_for_google_id_token
+    verify_google_id_token, _get_default_certs, user_for_google_id_token,
+    associate_user_with_google_id
 )
 from componentsdb.model import UserIdentity
 
@@ -41,7 +42,12 @@ def valid_payload(app, fake):
     )
 
 @pytest.fixture
-def google_token(app, valid_payload):
+def no_user_google_token(app, valid_payload):
+    # pylint: disable=no-member
+    assert UserIdentity.query.filter(
+        UserIdentity.provider == 'google',
+        UserIdentity.provider_identity == valid_payload['sub']
+    ).first() is None
     return _encode_valid_token(app, valid_payload)
 
 def test_google_get_default_certs(app):
@@ -161,17 +167,11 @@ def test_google_user_needs_email(app, valid_payload):
     with pytest.raises(BadRequest):
         user_for_google_id_token(t)
 
-def test_google_user_creation(google_token, valid_payload):
+def test_google_user_creation(no_user_google_token, valid_payload):
     # pylint: disable=no-member
 
-    # Check user does not exist with this identity
-    assert UserIdentity.query.filter(
-        UserIdentity.provider == 'google',
-        UserIdentity.provider_identity == valid_payload['sub']
-    ).first() is None
-
     # Check creation of user
-    u = user_for_google_id_token(google_token)
+    u = user_for_google_id_token(no_user_google_token)
     assert u is not None
     assert u.name == valid_payload['email']
     assert u.id is not None # => it is in the database
@@ -182,22 +182,16 @@ def test_google_user_creation(google_token, valid_payload):
         UserIdentity.provider_identity == valid_payload['sub']
     ).count() == 1
 
-def test_google_user_retrieval(google_token, valid_payload):
+def test_google_user_retrieval(no_user_google_token, valid_payload):
     # pylint: disable=no-member
 
-    # Check user does not exist with this identity
-    assert UserIdentity.query.filter(
-        UserIdentity.provider == 'google',
-        UserIdentity.provider_identity == valid_payload['sub']
-    ).first() is None
-
     # Create user
-    u = user_for_google_id_token(google_token)
+    u = user_for_google_id_token(no_user_google_token)
     assert u is not None
     assert u.id is not None
 
     # Retrieve user. It should be the same one.
-    u2 = user_for_google_id_token(google_token)
+    u2 = user_for_google_id_token(no_user_google_token)
     assert u2 is not None
     assert u2.id == u.id
 
@@ -206,3 +200,32 @@ def test_google_user_retrieval(google_token, valid_payload):
         UserIdentity.provider == 'google',
         UserIdentity.provider_identity == valid_payload['sub']
     ).count() == 1
+
+def test_google_user_association(no_user_google_token, user):
+    associate_user_with_google_id(user, no_user_google_token)
+    u = user_for_google_id_token(no_user_google_token)
+    assert u.id == user.id
+
+def test_google_user_multiple_association(db, valid_payload, no_user_google_token, user):
+    """Repeatedly associating an id only affects one row."""
+    # pylint: disable=no-member
+
+    for _ in range(10):
+        associate_user_with_google_id(user, no_user_google_token)
+        db.session.commit()
+
+    u = user_for_google_id_token(no_user_google_token)
+    assert u.id == user.id
+
+    # Check identity is added only once
+    assert UserIdentity.query.filter(
+        UserIdentity.provider == 'google',
+        UserIdentity.provider_identity == valid_payload['sub']
+    ).count() == 1
+
+def test_google_user_fixture(google_id_token, user):
+    """Test that retrieving the user associated with the google_token fixture
+    gives the correct user."""
+    u = user_for_google_id_token(google_id_token)
+    assert u.id == user.id
+

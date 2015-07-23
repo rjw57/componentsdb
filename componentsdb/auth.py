@@ -36,6 +36,38 @@ def verify_google_id_token(token):
         raise crypt.AppIdentityError('invalid issuer: %s' % idinfo.get('iss'))
     return idinfo
 
+def associate_user_with_google_id(user, token):
+    """Associate a user with a Google token. The token is first verified.
+
+    If token verification fails, raises a BadRequest exception.
+
+    """
+    # pylint: disable=no-member
+
+    # verify token and extract Google id ("sub" claim)
+    try:
+        idinfo = verify_google_id_token(token)
+        sub = idinfo['sub']
+    except crypt.AppIdentityError as e:
+        raise BadRequest('invalid Google id token: %s' % (e,))
+    except KeyError:
+        raise BadRequest('token has no "sub" claim')
+
+    # Does this user already have this identity?
+    ui = UserIdentity.query.filter(
+        UserIdentity.provider == 'google',
+        UserIdentity.provider_identity == sub,
+        UserIdentity.user == user
+    ).first()
+
+    # add identity if necessary
+    if ui is None:
+        ui = UserIdentity(user=user, provider='google', provider_identity=sub)
+        db.session.add(ui)
+
+    # return identity
+    return ui
+
 def user_for_google_id_token(token):
     """Verify the passed token as a signed Google ID token and return the User
     associated with that identity. Create a user if none yet have that identity.
@@ -66,8 +98,7 @@ def user_for_google_id_token(token):
     # create user from identity if no user present
     u = User(name=email)
     db.session.add(u)
-    ui = UserIdentity(user=u, provider='google', provider_identity=sub)
-    db.session.add(ui)
+    associate_user_with_google_id(u, token)
     db.session.commit()
 
     return u
