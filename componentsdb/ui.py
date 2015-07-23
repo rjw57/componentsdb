@@ -126,3 +126,15 @@ def collection_create():
 
     # treat other methods as "GET"
     return render_template('collection_create.html')
+
+# FIXME: this is not an idempotent function and "GET" should be
+@ui.route('/collection/<key>/delete')
+@auth_or_signin
+def collection_delete(key):
+    # pylint: disable=no-member
+    c = Collection.query.get_for_current_user_or_404(Collection.decode_key(key))
+    try:
+        c.delete()
+    except ModelError:
+        raise Unauthorized('no delete permission')
+    return redirect(url_for('ui.index'))

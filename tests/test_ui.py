@@ -126,3 +126,18 @@ def test_create_collection_post(auth_client, fake):
 def test_create_collection_post_needs_name(auth_client, fake):
     r = auth_client.post(url_for('ui.collection_create'))
     assert r.status_code >= 400 # bad
+
+def test_delete_collection_needs_auth(client, user, collection):
+    collection.add_all_permissions(user)
+    r = client.get(url_for('ui.collection_delete', key=collection.encoded_key))
+    assert_redirect_to_sign_in(r)
+    assert Collection.query.get(collection.id) is not None
+
+def test_delete_collection_get(auth_client, collection, user):
+    collection.add_all_permissions(user)
+    assert Collection.query.get(collection.id) is not None
+    r = auth_client.get(
+        url_for('ui.collection_delete', key=collection.encoded_key)
+    )
+    assert r.status_code == 302 # redirects somewhere
+    assert Collection.query.get(collection.id) is None
