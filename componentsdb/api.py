@@ -92,3 +92,9 @@ def collection(key):
     resource = dict(name=c.name)
 
     return jsonify(resource)
+
+@api.route('/auth/exchange')
+@auth_required
+def exchange_token():
+    """Exchange an auth token for a new one."""
+    return jsonify(dict(token=current_user.token.decode('ascii')))

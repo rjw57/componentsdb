@@ -8,11 +8,12 @@ from __future__ import division
 import logging
 import math
 import random
+import time
 
 import pytest
 from flask import url_for, json
 
-from componentsdb.model import Permission, Collection
+from componentsdb.model import Permission, Collection, User
 
 def _post_json(client, url, data, headers=None):
     """Post JSON encoded data to url via client optionally setting headers."""
@@ -186,3 +187,40 @@ def test_collection_list_pagination(
         n_pages += 1
 
     assert n_pages == expected_pages
+
+def test_exchange_token_needs_auth(client):
+    r = client.get(url_for('api.exchange_token'))
+    assert r.status_code == 401
+
+def test_exchange_token(user_api_headers, client):
+    """Exchanging an authorisation token gives a new, valid token."""
+    r = client.get(
+        url_for('api.exchange_token'), headers=user_api_headers
+    )
+    assert r.status_code == 200
+    new_token = r.json['token']
+    logging.info('initial token: %s', new_token)
+
+    # test repeated exchanges
+    for _ in range(2):
+        old_token = new_token
+        logging.info('old token: %s', old_token)
+        h = {'Authorization': 'Bearer %s' % old_token}
+        logging.info('using headers: %s', h)
+        # annoyingly, JWTs are time based
+        time.sleep(1.01)
+        r = client.get(url_for('api.exchange_token'), headers=h)
+        logging.info('response: %s', r)
+        assert r.status_code == 200
+        new_token = r.json['token']
+        logging.info('new token: %s', old_token)
+        assert new_token != old_token
+
+def test_exchange_token_is_same_user(user_api_headers, user, client):
+    r = client.get(
+        url_for('api.exchange_token'), headers=user_api_headers
+    )
+    assert r.status_code == 200
+    new_token = r.json['token']
+    assert User.decode_token(new_token) == user.id
+

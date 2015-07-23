@@ -82,7 +82,8 @@ def _jwt_encode(payload):
     # Make a shallow copy of the payload and set the exp field.
     p = {}
     p.update(payload)
-    p['exp'] = datetime.datetime.utcnow() + _JWT_DEFAULT_EXP_DELTA
+    p['iat'] = datetime.datetime.utcnow()
+    p['exp'] = p['iat'] + _JWT_DEFAULT_EXP_DELTA
     return _jwt_encode_dangerous(p)
 
 def _jwt_decode(token):
