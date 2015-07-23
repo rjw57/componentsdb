@@ -6,13 +6,14 @@ import logging
 import jwt
 import pytest
 import mock
+from flask import json
+from oauth2client.crypt import AppIdentityError
+from werkzeug.exceptions import BadRequest, HTTPException
 
 from componentsdb.auth import (
     verify_google_id_token, _get_default_certs, user_for_google_id_token
 )
 from componentsdb.model import UserIdentity
-from oauth2client.crypt import AppIdentityError
-from werkzeug.exceptions import BadRequest, HTTPException
 
 def _encode_valid_token(app, payload):
     logging.info('encoding token payload: %s', payload)
@@ -46,14 +47,25 @@ def google_token(app, valid_payload):
 def test_google_get_default_certs(app):
     """Get default certs should fetch the Google certificates."""
     # pylint: disable=unused-argument
-    assert len(_get_default_certs()) > 0
+    mock_resp = mock.MagicMock()
+    mock_resp.status = 200
+    content = json.dumps(dict(foo='bar', buzz='quux'))
+    p = mock.patch(
+        'componentsdb.auth._cached_http.request',
+        return_value=(mock_resp, content)
+    )
+    with p as o:
+        cs = _get_default_certs()
+        o.assert_called_with('https://www.googleapis.com/oauth2/v1/certs')
+
+    assert cs == json.loads(content)
 
 def test_google_get_default_certs_checks_status(app):
     """Get default certs should fetch the Google certificates but also check the
     status code of the response.."""
     # pylint: disable=unused-argument
     mock_resp = mock.MagicMock()
-    mock_resp.status_code.return_value = 500
+    mock_resp.status = 500
     p = mock.patch(
         'componentsdb.auth._cached_http.request',
         return_value=(mock_resp, '')
