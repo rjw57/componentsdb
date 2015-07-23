@@ -11,6 +11,7 @@ from werkzeug.exceptions import BadRequest, Unauthorized
 
 from componentsdb.app import set_current_user_with_token
 from componentsdb.auth import user_for_google_id_token
+from componentsdb.model import Permission, Collection
 
 ui = Blueprint(
     'ui', __name__, template_folder='ui/templates', static_folder='ui/static',
@@ -56,7 +57,11 @@ def auth_or_signin(f):
 @ui.route('/')
 @auth_or_signin
 def index():
-    return render_template('index.html')
+    # pylint: disable=no-member
+    return render_template(
+        'index.html',
+        collections=Collection.query.with_permission(Permission.READ)
+    )
 
 @ui.route('/auth/signin')
 def signin():

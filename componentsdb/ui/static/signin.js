@@ -32,3 +32,4 @@ function onSignIn(googleUser) {
 
     document.location.assign(url);
 }
+
