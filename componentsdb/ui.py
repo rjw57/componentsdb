@@ -83,5 +83,13 @@ def signin_with_google_token():
     user = user_for_google_id_token(request.args['token'])
     session[AUTH_TOKEN_SESSION_KEY] = user.token
 
-    # Redirect to sign in
+    return redirect(redir_url)
+
+@ui.route('/auth/signout')
+def signout():
+    redir_url = request.args.get('target', url_for('ui.index'))
+
+    # Clear token from user session
+    del session[AUTH_TOKEN_SESSION_KEY]
+
     return redirect(redir_url)

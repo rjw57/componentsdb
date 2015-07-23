@@ -77,6 +77,13 @@ def test_signin_with_token(client, user):
     r = client.get(url_for('ui.signin', token=user.token))
     assert r.status_code == 302
     assert_path_equals(r.headers['Location'], url_for('ui.index'))
+    r = client.get(r.headers['Location'])
     assert current_user.id == user.id
+
+def test_signout(auth_client):
+    r = auth_client.get(url_for('ui.signout'))
+    assert r.status_code == 302
+    assert_path_equals(r.headers['Location'], url_for('ui.index'))
+    assert session.get(AUTH_TOKEN_SESSION_KEY) is None
 
 
