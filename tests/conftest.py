@@ -29,21 +29,23 @@ def db():
     return _db
 
 @pytest.fixture(scope='session')
-def mixer(app):
-    faker = Faker()
+def fake():
+    return Faker()
 
+@pytest.fixture(scope='session')
+def mixer(app, fake):
     mixer = Mixer(commit=True)
     mixer.init_app(app)
 
     mixer.register(
-        Component, code=faker.slug, description=faker.sentence,
-        datasheet_url=faker.uri
+        Component, code=fake.slug, description=fake.sentence,
+        datasheet_url=fake.uri
     )
 
-    mixer.register(User, name=faker.name)
-    mixer.register(Collection, name=faker.text)
+    mixer.register(User, name=fake.name)
+    mixer.register(Collection, name=fake.text)
     mixer.register(
-        UserCollectionPermission, permission=faker.random_element(Permission)
+        UserCollectionPermission, permission=fake.random_element(Permission)
     )
 
     return mixer
