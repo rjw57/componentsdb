@@ -3,7 +3,7 @@ import logging
 import pytest
 from werkzeug.exceptions import NotFound
 
-from componentsdb.model import Collection, Permission
+from componentsdb.model import Collection, Permission, ModelError
 
 def test_get_requires_read(current_user, collection):
     # pylint: disable=no-member
@@ -40,3 +40,15 @@ def test_with_user_permission(user, mixer):
     for r in rs:
         logging.info('has read: %s', r)
     assert len(rs) == len(cs1) + len(cs2)
+
+def test_delete_needs_permission(current_user, collection):
+    collection.add_all_permissions(current_user)
+    collection.remove_permission(current_user, Permission.DELETE)
+    with pytest.raises(ModelError):
+        collection.delete()
+
+def test_delete(current_user, collection):
+    collection.add_all_permissions(current_user)
+    assert collection.can_delete
+    collection.delete()
+    assert Collection.query.get(collection.id) is None

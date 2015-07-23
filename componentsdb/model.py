@@ -178,6 +178,14 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
             g.current_user.id, body.get('name')
         )).one()[0]
 
+    def delete(self):
+        """Deletes this collection from the database. Requires current user has
+        delete permission."""
+        # pylint: disable=no-member
+        if not self.can_delete:
+            raise ModelError('user does not have permission to delete')
+        Collection.query.filter(Collection.id == self.id).delete()
+
     def has_permission(self, user, perm):
         """Return True iff the user has permission perm on this collection."""
         return db.session.query(func.collection_user_has_permission(
