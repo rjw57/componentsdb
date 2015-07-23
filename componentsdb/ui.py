@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, Unauthorized
 
 from componentsdb.app import set_current_user_with_token
 from componentsdb.auth import user_for_google_id_token
-from componentsdb.model import Permission, Collection
+from componentsdb.model import db, Permission, Collection, ModelError
 
 ui = Blueprint(
     'ui', __name__, template_folder='ui/templates', static_folder='ui/static',
@@ -110,7 +110,19 @@ def collection(key):
     c = Collection.query.get_for_current_user_or_404(Collection.decode_key(key))
     return render_template('collection.html', collection=c)
 
-@ui.route('/collection')
+@ui.route('/collection', methods=['GET', 'POST'])
 @auth_or_signin
 def collection_create():
-    return ''
+    # pylint: disable=no-member
+
+    if request.method == 'POST':
+        d = dict(name=request.form['name'])
+        try:
+            c = Collection.query.get_or_404(Collection.create(d))
+        except ModelError as e:
+            raise BadRequest(str(e))
+        db.session.commit()
+        return redirect(url_for('ui.collection', key=c.encoded_key))
+
+    # treat other methods as "GET"
+    return render_template('collection_create.html')

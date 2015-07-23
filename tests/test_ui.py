@@ -108,3 +108,21 @@ def test_create_collection_get(auth_client):
     r = auth_client.get(url_for('ui.collection_create'))
     assert r.status_code == 200
 
+def test_create_collection_post(auth_client, fake):
+    # pylint: disable=no-member
+
+    name = fake.text()
+    data = dict(name=name)
+    r = auth_client.post(url_for('ui.collection_create'), data=data)
+    assert r.status_code == 302 # redirects
+
+    # redirect exists
+    r = auth_client.get(r.headers['Location'])
+    assert r.status_code == 200
+
+    # collection actually created
+    assert Collection.query.filter(name == name).first() is not None
+
+def test_create_collection_post_needs_name(auth_client, fake):
+    r = auth_client.post(url_for('ui.collection_create'))
+    assert r.status_code >= 400 # bad

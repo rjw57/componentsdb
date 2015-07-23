@@ -19,6 +19,9 @@ db = SQLAlchemy()
 
 # Mixin classes for common model functionality
 
+class ModelError(Exception):
+    pass
+
 class _IdMixin(object):
     id = db.Column(db.BigInteger, primary_key=True)
 
@@ -168,6 +171,9 @@ class Collection(db.Model, _CommonMixins, _EncodableKeyMixin):
         Returns the id of the new collection/
 
         """
+        name = body.get('name')
+        if name is None or name == '':
+            raise ModelError('collection: name must be non-empty')
         return db.session.query(func.collection_create(
             g.current_user.id, body.get('name')
         )).one()[0]
