@@ -2,6 +2,7 @@
 alembic
 coverage
 mixer
+mock
 psycopg2
 pytest
 pytest-capturelog

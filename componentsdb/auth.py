@@ -1,7 +1,7 @@
 import httplib2
 from flask import current_app, json
 from oauth2client import client, crypt
-from werkzeug.exceptions import HTTPException, BadRequest
+from werkzeug.exceptions import abort, BadRequest
 
 from componentsdb.model import db, User, UserIdentity
 
@@ -18,7 +18,7 @@ def _get_default_certs():
     if r.status == 200:
         return json.loads(content)
 
-    raise HTTPException(status_code=r.status) # pragma: no cover
+    abort(r.status)
 
 def verify_google_id_token(token):
     """Verify the id token against the Google public keys. Note that this
