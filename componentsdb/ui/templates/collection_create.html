@@ -1,0 +1,10 @@
+{% extends "layout_page.html" %}
+
+{% block body %}
+
+<form method="post" action="{{url_for('ui.collection_create')}}">
+  <input name="name" type="text">
+  <input type="submit">
+</form>
+
+{% endblock %}
