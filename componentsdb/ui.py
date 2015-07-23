@@ -117,11 +117,7 @@ def collection_create():
 
     if request.method == 'POST':
         d = dict(name=request.form['name'])
-        try:
-            c = Collection.query.get_or_404(Collection.create(d))
-        except ModelError as e:
-            raise BadRequest(str(e))
-        db.session.commit()
+        c = Collection.query.get_or_404(Collection.create(d))
         return redirect(url_for('ui.collection', key=c.encoded_key))
 
     # treat other methods as "GET"

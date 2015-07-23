@@ -6,7 +6,7 @@ import pytest
 from flask import url_for, session
 
 from componentsdb.app import current_user
-from componentsdb.model import User, Collection
+from componentsdb.model import User, Collection, Permission
 from componentsdb.ui import AUTH_TOKEN_SESSION_KEY
 
 # Python 3/2 compatibility
@@ -125,13 +125,25 @@ def test_create_collection_post(auth_client, fake):
 
 def test_create_collection_post_needs_name(auth_client, fake):
     r = auth_client.post(url_for('ui.collection_create'))
-    assert r.status_code >= 400 # bad
+    logging.info('got response: %s', r)
+    assert r.status_code == 400 # bad request
+    r = auth_client.post(url_for('ui.collection_create', data=dict(name='')))
+    logging.info('got response: %s', r)
+    assert r.status_code == 400 # bad request
 
 def test_delete_collection_needs_auth(client, user, collection):
     collection.add_all_permissions(user)
     r = client.get(url_for('ui.collection_delete', key=collection.encoded_key))
     assert_redirect_to_sign_in(r)
     assert Collection.query.get(collection.id) is not None
+
+def test_delete_collection_needs_permission(auth_client, user, collection):
+    collection.add_all_permissions(user)
+    collection.remove_permission(user, Permission.DELETE)
+    r = auth_client.get(
+        url_for('ui.collection_delete', key=collection.encoded_key)
+    )
+    assert r.status_code == 401 # unauthorised
 
 def test_delete_collection_get(auth_client, collection, user):
     collection.add_all_permissions(user)
