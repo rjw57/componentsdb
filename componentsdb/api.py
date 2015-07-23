@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request, url_for, current_app
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 from componentsdb.app import current_user, set_current_user_with_token
+from componentsdb.auth import user_for_google_id_token
 from componentsdb.model import Collection, Permission
 
 api = Blueprint('api', __name__)
@@ -98,3 +99,9 @@ def collection(key):
 def exchange_token():
     """Exchange an auth token for a new one."""
     return jsonify(dict(token=current_user.token.decode('ascii')))
+
+@api.route('/auth/google')
+def exchange_google_token():
+    """Exchange an google id token for a user token."""
+    user = user_for_google_id_token(request.args['token'])
+    return jsonify(dict(token=user.token.decode('ascii')))

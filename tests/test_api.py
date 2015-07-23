@@ -15,16 +15,27 @@ from flask import url_for, json
 
 from componentsdb.model import Permission, Collection, User
 
+# Python 3/2 compatibility
+try:
+    # pylint: disable=no-name-in-module,import-error
+    from urllib.parse import urljoin, urlencode
+except ImportError:
+    # pylint: disable=no-name-in-module,import-error
+    from urlparse import urljoin
+    from urllib import urlencode
+
 def _post_json(client, url, data, headers=None):
     """Post JSON encoded data to url via client optionally setting headers."""
     h = {'Content-Type': 'application/json'}
-    h.update(headers)
+    if headers is not None:
+        h.update(headers)
     return client.post(url, data=json.dumps(data), headers=h)
 
 def _put_json(client, url, data, headers=None):
     """Put JSON encoded data to url via client optionally setting headers."""
     h = {'Content-Type': 'application/json'}
-    h.update(headers)
+    if headers is not None:
+        h.update(headers)
     return client.put(url, data=json.dumps(data), headers=h)
 
 @pytest.fixture(params=[0, 1e-20, 0.9, 1.1, 1, 2, 2.2, 5])
@@ -224,3 +235,11 @@ def test_exchange_token_is_same_user(user_api_headers, user, client):
     new_token = r.json['token']
     assert User.decode_token(new_token) == user.id
 
+def test_exchange_google_id(google_id_token, user, client):
+    qs = urlencode(dict(token=google_id_token))
+    r = client.get(
+        urljoin(url_for('api.exchange_google_token'), '?'+qs)
+    )
+    assert r.status_code == 200
+    new_token = r.json['token']
+    assert User.decode_token(new_token) == user.id
