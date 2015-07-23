@@ -1,0 +1,7 @@
+{% extends "layout_page.html" %}
+
+{% block body %}
+  Hello, {{g.current_user.name}}.
+
+  <a href="{{url_for('ui.signout')}}">Sign out</a>
+{% endblock %}

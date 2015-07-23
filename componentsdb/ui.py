@@ -52,7 +52,7 @@ def auth_or_signin(f):
 @ui.route('/')
 @auth_or_signin
 def index():
-    return 'hello, world'
+    return render_template('index.html')
 
 @ui.route('/auth/signin')
 def signin():
