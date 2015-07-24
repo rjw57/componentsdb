@@ -5,7 +5,6 @@ Test JWT handling.
 # pylint: disable=redefined-outer-name, unused-argument
 
 import datetime
-from contextlib import contextmanager
 
 import jwt
 import pytest
@@ -15,14 +14,6 @@ from componentsdb.model import (
     User,
     _jwt_encode, _jwt_decode, _jwt_encode_dangerous
 )
-
-@contextmanager
-def secret(app, new_secret):
-    """Simple context manager to temporarily change app's secret key."""
-    old_secret = app.secret_key
-    app.secret_key = new_secret
-    yield
-    app.secret_key = old_secret
 
 def test_token_enc_dec(app):
     """Test basic encoding and decoding of token."""
@@ -42,8 +33,13 @@ def test_verify_sig(app):
     """Test that token is verified."""
     payload = dict(foo=1)
     t = _jwt_encode(payload)
-    with secret(app, 'foo'), pytest.raises(jwt.exceptions.DecodeError):
-        _jwt_decode(t)
+    old_key = app.secret_key
+    try:
+        app.secret_key = 'foo'
+        with pytest.raises(jwt.exceptions.DecodeError):
+            _jwt_decode(t)
+    finally:
+        app.secret_key = old_key
 
 def test_verify_exp_in_future(app):
     """Test that token expiry is verified as being in future."""
