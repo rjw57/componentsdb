@@ -1,8 +1,0 @@
-# requirements specifically for setup.py
-setuptools
-
-# requirements for development
-alembic
-
-# requirements for testing
-tox
