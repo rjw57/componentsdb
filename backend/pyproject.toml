@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "componentsdb"
+version = "0.1.0"
+description = "A web application implementing an electronic components database"
+authors = ["Rich Wareham <rich.componentsdb@richwareham.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
