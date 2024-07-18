@@ -1,0 +1,34 @@
+name: Tests
+
+on:
+  - push
+
+jobs:
+  pre-commit:
+    name: Run pre-commit checks
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: ./.github/actions/pre-commit
+  backend-test:
+    name: Run backend test suite
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install poetry and poe
+        run: pipx install poetry poethepoet
+        shell: bash
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "poetry"
+          cache-dependency-path: "backend/poetry.lock"
+      - name: Install dependencies
+        run: poetry -C backend install
+      - name: Run test suite
+        run: poe -C backend test
