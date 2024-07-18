@@ -1,0 +1,112 @@
+services:
+  ########## DATABASES AND DATABASE TOOLING ##########
+
+  # A postgres database instance which contains both the components database alongside the testing
+  # database. Databases and users are configured in ./compose/db/docker-entrypoint-initdb.d/.
+  db:
+    profiles:
+      - dev
+      - prod
+      - tool
+      - test
+    image: &db-image postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres-pass
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - --dbname
+        - postgresql://components-user:components-pass@db:5432/components?sslmode=disable
+      interval: 1s
+      timeout: 3s
+      retries: 5
+      start_period: 120s
+      start_interval: 1s
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./compose/db/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+
+  # psql command line tool running in the persisted database. Has the project root mounted
+  # read-write under /workspace which is also the working directory.
+  psql:
+    profiles:
+      - tool
+    image: *db-image
+    entrypoint:
+      - "psql"
+      - "--dbname"
+      - postgresql://postgres:postgres-pass@db:5432/components?sslmode=disable
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Run the alembic migration tool
+  alembic:
+    profiles:
+      - tool
+    build:
+      dockerfile_inline: |
+        FROM python:3.12
+        RUN pip install alembic~=1.13 asyncpg==0.29 black~=23.1
+    environment:
+      ALEMBIC_SQLALCHEMY_URL: postgresql+asyncpg://postgres:postgres-pass@db/components
+    entrypoint: ["alembic"]
+    working_dir: /workspace/backend
+    volumes:
+      - ./:/workspace
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ########## SUPPORT SERVICES ##########
+
+  # Run database migrations
+  db-migrate:
+    extends:
+      service: alembic
+    profiles:
+      - dev
+      - prod
+      - tool
+    command: ["upgrade", "head"]
+
+  # Run database migrations in the test database
+  test-db-migrate:
+    extends:
+      service: alembic
+    profiles:
+      - test
+    command: ["upgrade", "head"]
+    environment:
+      ALEMBIC_SQLALCHEMY_URL: postgresql+asyncpg://postgres:postgres-pass@db/test
+
+  ########## TEST SUITE ##########
+
+  backend-test:
+    profiles:
+      - test
+    build:
+      dockerfile_inline: |
+        FROM python:3.12
+        RUN pip install poetry
+        COPY backend/poetry.lock backend/pyproject.toml /usr/src/backend/
+        WORKDIR /usr/src/backend
+        RUN poetry install
+    entrypoint: ["poetry"]
+    command: ["run", "poe", "test"]
+    volumes:
+      - ./:/usr/src
+    environment:
+      TESTING_DB_URL: postgresql+asyncpg://postgres:postgres-pass@db/test
+    depends_on:
+      db:
+        condition: service_healthy
+      test-db-migrate:
+        condition: service_completed_successfully
+
+volumes:
+  db-data:

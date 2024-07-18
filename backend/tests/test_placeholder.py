@@ -1,3 +1,2 @@
-def test_placeholder():
-    "Placeholder test to ensure test suite runs"
-    import componentsdb  # noqa:F401
+def test_import():
+    import componentsdb  # noqa: F401
