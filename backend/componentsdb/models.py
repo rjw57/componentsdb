@@ -23,16 +23,16 @@ class _IdMixin(object):
 
 class _UUIDMixin(object):
     uuid: Mapped[uuid_.UUID] = mapped_column(
-        sa.UUID, nullable=False, default=sa.Function("gen_random_uuid")
+        sa.UUID, nullable=False, server_default=sa.Function("gen_random_uuid")
     )
 
 
 class _TimestampsMixin(object):
     created_at: Mapped[datetime.datetime] = mapped_column(
-        sa.DateTime(timezone=True), server_default=sa.FetchedValue()
+        sa.DateTime(timezone=True), server_default=sa.Function("now")
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        sa.DateTime(timezone=True), server_default=sa.FetchedValue()
+        sa.DateTime(timezone=True), server_default=sa.Function("now")
     )
 
 

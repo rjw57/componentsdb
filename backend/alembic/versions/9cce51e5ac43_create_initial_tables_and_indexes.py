@@ -25,17 +25,19 @@ def upgrade() -> None:
         "cabinets",
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("id", sa.BigInteger(), nullable=False),
-        sa.Column("uuid", sa.UUID(), nullable=False),
+        sa.Column(
+            "uuid", sa.UUID(), nullable=False, server_default=sa.Function("gen_random_uuid")
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.FetchedValue(),
+            server_default=sa.Function("now"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            server_default=sa.FetchedValue(),
+            server_default=sa.Function("now"),
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
@@ -47,17 +49,19 @@ def upgrade() -> None:
         sa.Column("description", sa.String(), nullable=True),
         sa.Column("datasheet_url", sa.String(), nullable=True),
         sa.Column("id", sa.BigInteger(), nullable=False),
-        sa.Column("uuid", sa.UUID(), nullable=False),
+        sa.Column(
+            "uuid", sa.UUID(), nullable=False, server_default=sa.Function("gen_random_uuid")
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.FetchedValue(),
+            server_default=sa.Function("now"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            server_default=sa.FetchedValue(),
+            server_default=sa.Function("now"),
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
@@ -68,17 +72,19 @@ def upgrade() -> None:
         sa.Column("label", sa.String(), nullable=False),
         sa.Column("cabinet_id", sa.BigInteger(), nullable=False),
         sa.Column("id", sa.BigInteger(), nullable=False),
-        sa.Column("uuid", sa.UUID(), nullable=False),
+        sa.Column(
+            "uuid", sa.UUID(), nullable=False, server_default=sa.Function("gen_random_uuid")
+        ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.FetchedValue(),
+            server_default=sa.Function("now"),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            server_default=sa.FetchedValue(),
+            server_default=sa.Function("now"),
             nullable=False,
         ),
         sa.ForeignKeyConstraint(
