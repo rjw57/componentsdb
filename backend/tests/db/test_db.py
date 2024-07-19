@@ -2,7 +2,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from componentsdb.db import models
+from componentsdb.db import models as m
 
 
 @pytest.mark.asyncio
@@ -13,12 +13,12 @@ async def test_db_connection(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_cabinets_table_exists(db_session: AsyncSession):
-    await db_session.execute(sa.select(models.Cabinet))
+    await db_session.execute(sa.select(m.Cabinet))
 
 
 @pytest.mark.asyncio
 async def test_cabinets_auto_fields(db_session: AsyncSession):
-    cabinet = models.Cabinet(name="testing-name")
+    cabinet = m.Cabinet(name="testing-name")
     db_session.add(cabinet)
     await db_session.flush()
     assert cabinet.id != 0

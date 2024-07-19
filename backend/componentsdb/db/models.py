@@ -63,6 +63,7 @@ class Drawer(Base, _ResourceMixin):
 
 
 sa.Index("idx_drawers_uuid", Drawer.uuid)
+sa.Index("idx_drawers_cabinet", Drawer.cabinet_id)
 
 
 @dataclass
@@ -75,3 +76,25 @@ class Component(Base, _ResourceMixin):
 
 
 sa.Index("idx_components_uuid", Component.uuid)
+
+
+@dataclass
+class Collection(Base, _ResourceMixin):
+    __tablename__ = "collections"
+    __table_args__ = (sa.CheckConstraint("count >= 0"),)
+
+    count: Mapped[int]
+    drawer_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("drawers.id"))
+    component_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("components.id"))
+
+    drawer: Mapped[Drawer] = relationship(
+        backref=backref("collections", cascade="all, delete-orphan")
+    )
+    component: Mapped[Component] = relationship(
+        backref=backref("collections", cascade="all, delete-orphan")
+    )
+
+
+sa.Index("idx_collections_uuid", Collection.uuid)
+sa.Index("idx_collections_drawer", Collection.drawer_id)
+sa.Index("idx_collections_component", Collection.component_id)
