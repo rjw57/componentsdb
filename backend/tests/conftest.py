@@ -51,14 +51,19 @@ else:
         return _testing_db_url
 
 
-@pytest.fixture
-def migrated_db(db_url):
+@pytest.fixture(scope="session")
+def alembic_config(db_url):
     config = alembic.config.Config()
     config.set_main_option("script_location", "alembic")
     config.set_main_option("sqlalchemy.url", db_url)
-    alembic.command.upgrade(config, "head")
+    return config
+
+
+@pytest.fixture(scope="session")
+def migrated_db(alembic_config: alembic.config.Config):
+    alembic.command.upgrade(alembic_config, "head")
     yield
-    alembic.command.downgrade(config, "base")
+    alembic.command.downgrade(alembic_config, "base")
 
 
 @pytest_asyncio.fixture

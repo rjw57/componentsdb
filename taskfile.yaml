@@ -5,6 +5,7 @@ tasks:
     desc: install pre-commit hooks, pull docker images and rebuild containers
     cmds:
       - pre-commit install
+      - pre-commit install-hooks
       - task: compose-pull
       - task: compose-build
   up:
