@@ -25,7 +25,7 @@ async def fake_items(db_engine: AsyncEngine, faker: Faker):
 async def test_resource_uuid_default(table: str, db_engine: AsyncEngine, fake_items):
     """uuid column is set on INSERT."""
     async with db_engine.connect() as conn:
-        uuid = (await conn.execute(text(f"SELECT uuid FROM {table} ORDER BY id ASC"))).first()[0]
+        uuid = (await conn.execute(text(f"SELECT uuid FROM {table} ORDER BY id ASC"))).scalar()
         assert uuid is not None
 
 
@@ -35,8 +35,10 @@ async def test_resource_at_fields_default(table: str, db_engine: AsyncEngine, fa
     """created_at and updated_at set on INSERT."""
     async with db_engine.connect() as conn:
         created_at, updated_at = (
-            await conn.execute(text(f"SELECT created_at, updated_at FROM {table} ORDER BY id ASC"))
-        ).first()
+            await conn.execute(
+                text(f"SELECT created_at, updated_at FROM {table} ORDER BY id ASC LIMIT 1")
+            )
+        ).one()
         assert created_at is not None
         assert updated_at is not None
         assert updated_at == created_at
@@ -47,7 +49,7 @@ async def test_resource_at_fields_default(table: str, db_engine: AsyncEngine, fa
 async def test_updated_at_updated(table: str, faker: Faker, db_engine: AsyncEngine):
     """updated_at is updated when rows are updated."""
     async with db_engine.connect() as conn:
-        (id,) = (await conn.execute(text(f"SELECT id FROM {table} ORDER BY id"))).first()
+        id = (await conn.execute(text(f"SELECT id FROM {table} ORDER BY id"))).scalar()
         match table:
             case "cabinets":
                 await conn.execute(
@@ -87,7 +89,7 @@ async def test_updated_at_updated(table: str, faker: Faker, db_engine: AsyncEngi
                 text(f"SELECT created_at, updated_at FROM {table} WHERE id = :id"),
                 {"id": id},
             )
-        ).first()
+        ).one()
         assert created_at is not None
         assert updated_at is not None
         assert updated_at > created_at
