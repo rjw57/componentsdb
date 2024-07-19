@@ -54,7 +54,9 @@ else:
 @pytest.fixture(scope="session")
 def alembic_config(db_url):
     config = alembic.config.Config()
-    config.set_main_option("script_location", "alembic")
+    config.set_main_option(
+        "script_location", os.path.join(os.path.dirname(__file__), "../", "alembic")
+    )
     config.set_main_option("sqlalchemy.url", db_url)
     return config
 
