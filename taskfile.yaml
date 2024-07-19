@@ -1,0 +1,45 @@
+version: "3"
+
+tasks:
+  init:
+    desc: install pre-commit hooks, pull docker images and rebuild containers
+    cmds:
+      - pre-commit install
+      - task: compose-pull
+      - task: compose-build
+  up:
+    desc: "start application"
+    cmds:
+      - docker compose --profile=dev up --wait
+  up-prod:
+    desc: "start application"
+    cmds:
+      - docker compose --profile=prod up --wait
+  down:
+    desc: "stop running containers"
+    cmds:
+      - docker compose --profile=* down --remove-orphans
+  down-hard:
+    desc: "stop running containers and delete local volumes"
+    cmds:
+      - docker compose --profile=* down --volumes --remove-orphans
+  test:
+    desc: "run automated tests"
+    cmds:
+      - task: backend-test
+  backend-test:
+    desc: "run backend test suite"
+    cmds:
+      - docker compose run --rm backend-test {{.CLI_ARGS}}
+  compose-pull:
+    desc: "pull remote images"
+    cmds:
+      - docker compose --profile=* pull
+  compose-build:
+    desc: "build local images"
+    cmds:
+      - docker compose --profile=* build
+  psql:
+    desc: "open a database shell"
+    cmds:
+      - docker compose run --rm psql {{.CLI_ARGS}}
