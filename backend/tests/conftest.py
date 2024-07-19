@@ -43,7 +43,7 @@ if _testing_db_url == "":
     @pytest.fixture(scope="session")
     def db_url(postgres_container):
         # Wait for container to be healthy
-        for _ in range(20):
+        for _ in range(200):
             if postgres_container.attrs["State"]["Health"]["Status"] == "healthy":
                 break
             time.sleep(0.2)
