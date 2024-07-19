@@ -74,16 +74,6 @@ services:
       - tool
     command: ["upgrade", "head"]
 
-  # Run database migrations in the test database
-  test-db-migrate:
-    extends:
-      service: alembic
-    profiles:
-      - test
-    command: ["upgrade", "head"]
-    environment:
-      ALEMBIC_SQLALCHEMY_URL: postgresql+asyncpg://postgres:postgres-pass@db/test
-
   ########## TEST SUITE ##########
 
   backend-test:
@@ -105,8 +95,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      test-db-migrate:
-        condition: service_completed_successfully
 
 volumes:
   db-data:

@@ -41,13 +41,7 @@ if _testing_db_url == "":
     @pytest.fixture(scope="session")
     def db_url(postgres_container):
         host, port = postgres_container.get_addr("5432/tcp")
-        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{
-            host}:{port}/pytest-db"
-        config = alembic.config.Config()
-        config.set_main_option("script_location", "alembic")
-        config.set_main_option("sqlalchemy.url", url)
-        config.set_section_option("loggers", "keys", "root,sqlalchemy,alembic")
-        alembic.command.upgrade(config, "head")
+        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{host}:{port}/pytest-db"
         return url
 
 else:
@@ -57,13 +51,28 @@ else:
         return _testing_db_url
 
 
+@pytest.fixture
+def migrated_db(db_url):
+    config = alembic.config.Config()
+    config.set_main_option("script_location", "alembic")
+    config.set_main_option("sqlalchemy.url", db_url)
+    alembic.command.upgrade(config, "head")
+    yield
+    alembic.command.downgrade(config, "base")
+
+
 @pytest_asyncio.fixture
-async def db_session(db_url):
+async def db_engine(db_url, migrated_db):
     engine = create_async_engine(db_url, echo=True)
-    session = async_sessionmaker(engine, expire_on_commit=False)()
+    yield engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db_session(db_engine):
+    session = async_sessionmaker(db_engine, expire_on_commit=False)()
     print("Creating test transaction...")
     async with session.begin():
         yield session
         print("Rolling back test transaction...")
         await session.rollback()
-    await engine.dispose()
