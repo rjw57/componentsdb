@@ -36,7 +36,7 @@ help = "Run the pytest test suite"
 cmd = "pytest"
 
 [tool.pytest.ini_options]
-addopts = "--cov --cov-report html"
+addopts = "--cov --cov-report html --cov-report term"
 
 [tool.coverage.run]
 branch = true

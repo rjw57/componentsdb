@@ -43,3 +43,8 @@ async def collections(
     db_session.add_all(collections)
     await db_session.flush()
     return collections
+
+
+@pytest_asyncio.fixture
+async def all_fakes(collections, cabinets, drawers, components):
+    pass
