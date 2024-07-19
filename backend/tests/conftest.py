@@ -1,4 +1,5 @@
 import os
+import time
 
 import pytest
 import pytest_asyncio
@@ -26,13 +27,14 @@ if _testing_db_url == "":
                 "CMD",
                 "pg_isready",
                 "--dbname",
-                "postgresql://pytest-user@localhost:5432pytest-pass@/pytest-db?sslmode=disable",
+                "postgresql://pytest-user:pytest-pass@localhost:5432/pytest-db?sslmode=disable",
             ],
             "interval": int(1e9),
             "timeout": int(3e9),
             "retries": 5,
             "start_period": int(120e9),
         },
+        remove=True,
         ports={
             "5432/tcp": None,
         },
@@ -40,6 +42,15 @@ if _testing_db_url == "":
 
     @pytest.fixture(scope="session")
     def db_url(postgres_container):
+        # Wait for container to be healthy
+        for _ in range(20):
+            if postgres_container.attrs["State"]["Health"]["Status"] == "healthy":
+                break
+            time.sleep(0.2)
+            postgres_container.reload()
+        else:
+            raise RuntimeError("Timed out waiting for container to be healthy")
+
         host, port = postgres_container.get_addr("5432/tcp")
         url = f"postgresql+asyncpg://pytest-user:pytest-pass@{host}:{port}/pytest-db"
         return url
