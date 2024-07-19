@@ -6,42 +6,32 @@ from __future__ import annotations
 from typing import Annotated, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, RootModel
-
-
-class UUIDModel(RootModel[UUID]):
-    root: Annotated[
-        UUID,
-        Field(
-            max_length=36,
-            min_length=36,
-            pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-        ),
-    ]
-
-
-class CabinetSummary(BaseModel):
-    id: Optional[UUID] = None
-    name: Optional[str] = None
+from pydantic import BaseModel, Field
 
 
 class ServerStatus(BaseModel):
     pass
 
 
-class CabinetList(BaseModel):
-    items: Optional[List[CabinetSummary]] = None
-    next_cursor: Annotated[Optional[UUIDModel], Field(None, alias="nextCursor")]
-
-
 class DrawerSummary(BaseModel):
-    id: Optional[UUID] = None
-    label: Optional[str] = None
+    id: UUID
+    label: str
 
 
 class DrawerDetail(DrawerSummary):
     pass
 
 
+class CabinetSummary(BaseModel):
+    id: UUID
+    name: str
+    drawers: List[DrawerSummary]
+
+
 class CabinetDetail(CabinetSummary):
-    drawers: Optional[List[DrawerDetail]] = None
+    drawers: List[DrawerDetail]
+
+
+class CabinetList(BaseModel):
+    items: List[CabinetSummary]
+    next_cursor: Annotated[Optional[UUID], Field(None, alias="nextCursor")]

@@ -58,7 +58,7 @@ class Drawer(Base, _ResourceMixin):
     cabinet_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("cabinets.id"))
 
     cabinet: Mapped[Cabinet] = relationship(
-        backref=backref("drawers", cascade="all, delete-orphan")
+        backref=backref("drawers", cascade="all, delete-orphan"), lazy="raise"
     )
 
 
@@ -88,10 +88,10 @@ class Collection(Base, _ResourceMixin):
     component_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("components.id"))
 
     drawer: Mapped[Drawer] = relationship(
-        backref=backref("collections", cascade="all, delete-orphan")
+        backref=backref("collections", cascade="all, delete-orphan"), lazy="raise"
     )
     component: Mapped[Component] = relationship(
-        backref=backref("collections", cascade="all, delete-orphan")
+        backref=backref("collections", cascade="all, delete-orphan"), lazy="raise"
     )
 
 
