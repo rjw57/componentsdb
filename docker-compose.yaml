@@ -86,8 +86,7 @@ services:
         COPY backend/poetry.lock backend/pyproject.toml /usr/src/backend/
         WORKDIR /usr/src/backend
         RUN poetry install
-    entrypoint: ["poetry"]
-    command: ["run", "poe", "test"]
+    entrypoint: ["poetry", "run", "poe", "test"]
     volumes:
       - ./:/usr/src
     environment:
