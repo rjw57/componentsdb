@@ -8,7 +8,7 @@ from componentsdb.db import models as m
 @pytest.mark.asyncio
 async def test_db_connection(db_session: AsyncSession):
     "Database connection is valid."
-    assert (1,) == (await db_session.execute(sa.select(1))).first()
+    assert 1 == (await db_session.execute(sa.select(1))).scalar()
 
 
 @pytest.mark.asyncio
