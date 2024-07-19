@@ -58,3 +58,20 @@ repos:
     rev: v1.7.1
     hooks:
       - id: actionlint
+
+  - repo: https://github.com/python-openapi/openapi-spec-validator
+    rev: 0.7.1
+    hooks:
+      - id: openapi-spec-validator
+        files: openapi/.*\.yaml
+
+  - repo: local
+    hooks:
+      - id: gen-backend-api-model
+        name: Generate OpenAPI model for backend
+        additional_dependencies:
+          - datamodel-code-generator~=0.25.8
+        language: python
+        entry: "sh -c 'cd backend; datamodel-codegen'"
+        pass_filenames: false
+        files: ^openapi/

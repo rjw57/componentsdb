@@ -53,3 +53,15 @@ profile = "black"
 
 [tool.mypy]
 ignore_missing_imports = true
+
+[tool.datamodel-codegen]
+input = "../openapi/spec.yaml"
+input-file-type = "openapi"
+output = "api/models.py"
+output-model-type = "pydantic_v2.BaseModel"
+use-annotated = true
+field-constraints = true
+snake-case-field = true
+target-python-version = "3.12"
+use-double-quotes = true
+disable-timestamp = true
