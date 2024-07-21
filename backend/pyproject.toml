@@ -14,6 +14,7 @@ uvicorn = "^0.30.1"
 structlog = "^24.4.0"
 asyncpg = "^0.29.0"
 faker = "^26.0.0"
+strawberry-graphql = {extras = ["fastapi"], version = "^0.236.0"}
 
 
 [tool.poetry.group.dev.dependencies]
@@ -37,6 +38,10 @@ cmd = "pytest"
 
 [tool.pytest.ini_options]
 addopts = "--cov --cov-report html --cov-report term"
+filterwarnings = [
+  # From strawberry GraphQL library
+ "ignore:'typing.ByteString' is deprecated:DeprecationWarning",
+]
 
 [tool.coverage.run]
 branch = true
@@ -50,6 +55,7 @@ profile = "black"
 
 [tool.mypy]
 ignore_missing_imports = true
+plugins = ["strawberry.ext.mypy_plugin"]
 
 [tool.datamodel-codegen]
 input = "../openapi/spec.yaml"

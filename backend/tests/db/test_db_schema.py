@@ -46,7 +46,7 @@ async def test_resource_at_fields_default(table: str, db_engine: AsyncEngine, fa
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("table", RESOURCE_TABLES)
-async def test_updated_at_updated(table: str, faker: Faker, db_engine: AsyncEngine):
+async def test_updated_at_updated(table: str, fake_items, faker: Faker, db_engine: AsyncEngine):
     """updated_at is updated when rows are updated."""
     async with db_engine.connect() as conn:
         id = (await conn.execute(text(f"SELECT id FROM {table} ORDER BY id"))).scalar()

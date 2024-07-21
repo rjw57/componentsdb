@@ -1,15 +1,20 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import FastAPI, Path
+from fastapi import APIRouter, FastAPI, Path
 from pydantic import Field
+from strawberry.fastapi import GraphQLRouter
 
+from ..graphql import schema
 from . import models as m
 
 app = FastAPI(
     title="Components Database",
     version="0.1.0",
 )
+
+graphql: APIRouter = GraphQLRouter(schema)
+app.include_router(graphql, prefix="/graphql")
 
 
 @app.get("/cabinets", response_model=m.CabinetList, tags=["cabinet"])
