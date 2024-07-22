@@ -1,21 +1,164 @@
 import base64
-from typing import Optional
+from abc import ABCMeta, abstractmethod
+from collections import defaultdict
+from typing import Generic, Optional, TypeVar
 from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
+from strawberry.dataloader import DataLoader
 
 from ..db import models as dbm
 from . import schema as s
+from .pagination import DEFAULT_LIMIT, Connection, Edge, MinMaxIds, PaginationParams
 
-DEFAULT_LIMIT = 100
+_R = TypeVar("_R", bound=dbm.ResourceMixin)
+_K = TypeVar("_K")
+_N = TypeVar("_N", bound="s.Node")
 
 
-def select_after_uuid(model: type[dbm.Base], uuid: UUID):
+class ConnectionLoader(Generic[_K, _N], metaclass=ABCMeta):
+    _session: AsyncSession
+    _edges_loader: DataLoader[tuple[_K, PaginationParams], list[Edge[_N]]]
+    _count_loader: DataLoader[_K, int]
+    _min_max_ids_loader: DataLoader[_K, MinMaxIds]
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+        self._edges_loader = DataLoader(load_fn=self._load_edges)
+        self._count_loader = DataLoader(load_fn=self._load_counts)
+        self._min_max_ids_loader = DataLoader(load_fn=self._load_min_max_ids)
+
+    def make_connection(self, key: _K, pagination_params: PaginationParams):
+        return Connection(
+            loader_key=key,
+            pagination_params=pagination_params,
+            edges_loader=self._edges_loader,
+            count_loader=self._count_loader,
+            min_max_ids_loader=self._min_max_ids_loader,
+        )
+
+    @abstractmethod
+    async def _load_edges(self, keys: list[tuple[_K, PaginationParams]]) -> list[list[Edge[_N]]]:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def _load_counts(self, keys: list[_K]) -> list[int]:
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def _load_min_max_ids(self, keys: list[_K]) -> list[Optional[MinMaxIds]]:
+        pass  # pragma: no cover
+
+
+class CabinetConnectionLoader(ConnectionLoader[None, "s.Cabinet"]):
+    async def _load_edges(
+        self, keys: list[tuple[None, PaginationParams]]
+    ) -> list[list[Edge["s.Cabinet"]]]:
+        rvs: list[list[Edge[s.Cabinet]]] = []
+        for k, p in keys:
+            if p.after is None:
+                stmt = sa.select(dbm.Cabinet).order_by(dbm.Cabinet.id)
+            else:
+                stmt = select_after_uuid(dbm.Cabinet, uuid_from_cursor(p.after))
+            stmt = stmt.limit(p.first if p.first is not None else DEFAULT_LIMIT)
+            cabinets = (await self._session.execute(stmt)).scalars().all()
+            rvs.append(
+                [
+                    Edge(
+                        cursor=cursor_from_uuid(c.uuid),
+                        node=s.Cabinet(db_id=c.id, id=c.uuid, name=c.name),
+                    )
+                    for c in cabinets
+                ]
+            )
+
+        return rvs
+
+    async def _load_counts(self, keys: list[None]) -> list[int]:
+        cabinet_count = (
+            await self._session.execute(sa.select(sa.func.count(dbm.Cabinet.id)))
+        ).scalar_one()
+        return [cabinet_count] * len(keys)
+
+    async def _load_min_max_ids(self, keys: list[None]) -> list[Optional[MinMaxIds]]:
+        min_max_id_stmt = sa.select(sa.func.min(dbm.Cabinet.id), sa.func.max(dbm.Cabinet.id))
+        min_id, max_id = (await self._session.execute(min_max_id_stmt)).one()
+        return [MinMaxIds(min_id, max_id)] * len(keys)
+
+
+class CabinetDrawerConnectionLoader(ConnectionLoader[int, "s.Drawer"]):
+    async def _load_edges(
+        self, keys: list[tuple[int, PaginationParams]]
+    ) -> list[list[Edge["s.Drawer"]]]:
+        if len(keys) == 0:
+            return []
+
+        sub_stmts: list[sa.Select] = []
+        for key_idx, (cabinet_id, p) in enumerate(keys):
+            first = p.first if p.first is not None else DEFAULT_LIMIT
+            stmt = (
+                sa.select(dbm.Drawer, sa.literal(key_idx).label("key_idx"))
+                .where(dbm.Drawer.cabinet_id == cabinet_id)
+                .order_by(dbm.Drawer.id.asc())
+            )
+            if p.after is not None:
+                stmt = select_after_uuid(dbm.Drawer, uuid_from_cursor(p.after), base_select=stmt)
+            stmt = stmt.limit(first)
+            sub_stmts.append(stmt)
+        stmt = sa.select(dbm.Drawer, sa.literal_column("key_idx")).from_statement(
+            sa.union_all(*sub_stmts)
+        )
+
+        drawers_by_key_idx = defaultdict[int, list[dbm.Drawer]](list)
+        for d, key_idx in await self._session.execute(stmt):
+            drawers_by_key_idx[key_idx].append(d)
+
+        return [
+            [
+                Edge(
+                    cursor=cursor_from_uuid(d.uuid),
+                    node=s.Drawer(db_id=d.id, id=d.uuid, label=d.label),
+                )
+                for d in drawers_by_key_idx[key_idx]
+            ]
+            for key_idx, (cabinet_id, _) in enumerate(keys)
+        ]
+
+    async def _load_counts(self, keys: list[int]) -> list[int]:
+        stmt = (
+            sa.select(dbm.Drawer.cabinet_id, sa.func.count(dbm.Drawer.id))
+            .group_by(dbm.Drawer.cabinet_id)
+            .having(dbm.Drawer.cabinet_id.in_(keys))
+        )
+        counts_by_id = {id_: count for id_, count in (await self._session.execute(stmt)).all()}
+        return [counts_by_id.get(id_, 0) for id_ in keys]
+
+    async def _load_min_max_ids(self, keys: list[int]) -> list[Optional[MinMaxIds]]:
+        stmt = (
+            sa.select(
+                dbm.Drawer.cabinet_id, sa.func.min(dbm.Drawer.id), sa.func.max(dbm.Drawer.id)
+            )
+            .group_by(dbm.Drawer.cabinet_id)
+            .having(dbm.Drawer.cabinet_id.in_(keys))
+        )
+        min_max_by_id = {
+            id_: MinMaxIds(min_, max_)
+            for id_, min_, max_ in (await self._session.execute(stmt)).all()
+        }
+        return [min_max_by_id.get(id_, None) for id_ in keys]
+
+
+def select_after_uuid(
+    model: type[_R], uuid: UUID, *, base_select: Optional[sa.Select[tuple[_R]]] = None
+) -> sa.Select[tuple[_R]]:
     subquery = (
         sa.select(model.id).where(model.uuid == uuid).order_by(model.id.asc()).scalar_subquery()
     )
-    return sa.select(model).where(model.id > subquery)
+    base_select = (
+        base_select if base_select is not None else sa.select(model).order_by(model.id.asc())
+    )
+    return base_select.where(model.id > subquery)
 
 
 def uuid_from_cursor(cursor: str) -> UUID:
@@ -24,91 +167,3 @@ def uuid_from_cursor(cursor: str) -> UUID:
 
 def cursor_from_uuid(uuid_: UUID) -> str:
     return base64.standard_b64encode(uuid_.bytes).decode("ascii")
-
-
-async def query_cabinets(
-    session: AsyncSession, after: Optional[str] = None, limit: Optional[int] = None
-) -> "s.Connection[s.Cabinet]":
-    limit = limit if limit is not None else DEFAULT_LIMIT
-    if after is None:
-        stmt = sa.select(dbm.Cabinet).order_by(dbm.Cabinet.id)
-    else:
-        stmt = select_after_uuid(dbm.Cabinet, uuid_from_cursor(after))
-    stmt = stmt.limit(limit + 1)
-    cabinets = (await session.execute(stmt)).scalars().all()
-    return _cabinet_connection(cabinets, limit)
-
-
-async def count_cabinets(session: AsyncSession) -> int:
-    return (await session.execute(sa.Select(sa.func.count(dbm.Cabinet.id)))).scalar()
-
-
-async def query_drawers_for_cabinet_ids(
-    db_session: AsyncSession, cabinet_uuids: list[str | UUID], limit: Optional[int] = None
-) -> list["s.Connection[s.Drawer]"]:
-    limit = limit if limit is not None else DEFAULT_LIMIT
-    subq = (
-        sa.select(dbm.Drawer)
-        .where(dbm.Drawer.cabinet_id == dbm.Cabinet.id)
-        .order_by(dbm.Drawer.id.asc())
-        .limit(limit + 1)
-        .subquery()
-        .lateral()
-        .alias("drawers")
-    )
-    stmt = (
-        sa.select(dbm.Cabinet)
-        .outerjoin(subq)
-        .where(dbm.Cabinet.uuid.in_(cabinet_uuids))
-        .options(
-            sa.orm.load_only(dbm.Cabinet.id),
-            sa.orm.contains_eager(dbm.Cabinet.drawers, alias=subq),
-        )
-    )
-    cabinets_by_uuid = {
-        str(c.uuid): c for c in (await db_session.execute(stmt)).unique().scalars()
-    }
-    return [
-        _drawer_connection(c.drawers if c is not None else [], limit)
-        for c in (cabinets_by_uuid.get(str(id_)) for id_ in cabinet_uuids)
-    ]
-
-
-def _cabinet_connection(cabinets: list[dbm.Cabinet], limit: int) -> "s.Connection[s.Cabinet]":
-    edges = [
-        s.Edge(
-            cursor=cursor_from_uuid(c.uuid),
-            node=s.Cabinet(
-                id=c.uuid,
-                name=c.name,
-            ),
-        )
-        for c in cabinets[:limit]
-    ]
-
-    page_info = s.PageInfo(
-        end_cursor=cursor_from_uuid(cabinets[limit - 1].uuid) if len(cabinets) > limit else None,
-        has_next_page=len(cabinets) > limit,
-    )
-
-    return s.Connection(edges=edges, page_info=page_info)
-
-
-def _drawer_connection(drawers: list[dbm.Drawer], limit: int) -> "s.Connection[s.Drawer]":
-    edges = [
-        s.Edge(
-            cursor=cursor_from_uuid(c.uuid),
-            node=s.Drawer(
-                id=c.uuid,
-                label=c.label,
-            ),
-        )
-        for c in drawers[:limit]
-    ]
-
-    page_info = s.PageInfo(
-        end_cursor=cursor_from_uuid(drawers[limit - 1].uuid) if len(drawers) > limit else None,
-        has_next_page=len(drawers) > limit,
-    )
-
-    return s.Connection(edges=edges, page_info=page_info)

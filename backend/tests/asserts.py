@@ -17,3 +17,19 @@ def expected_sql_query_count(db_session: AsyncSession, expected_count: int):
     assert (
         expected_count == state["count"]
     ), f"Unexpected number of SQL queries. Expected: {expected_count}, actual: {state['count']}"
+
+
+@contextlib.contextmanager
+def expected_sql_query_maximum_count(db_session: AsyncSession, expected_maximum_count: int):
+    state = {"count": 0}
+
+    def on_do_orm_execute(orm_execute_state):
+        state["count"] += 1
+
+    event.listen(db_session.sync_session, "do_orm_execute", on_do_orm_execute)
+    yield
+    event.remove(db_session.sync_session, "do_orm_execute", on_do_orm_execute)
+    assert expected_maximum_count >= state["count"], (
+        "Unexpected number of SQL queries. "
+        f"Expected maximum: {expected_maximum_count}, actual: {state['count']}"
+    )

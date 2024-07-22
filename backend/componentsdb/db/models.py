@@ -36,12 +36,12 @@ class _TimestampsMixin(object):
     )
 
 
-class _ResourceMixin(_IdMixin, _UUIDMixin, _TimestampsMixin):
+class ResourceMixin(_IdMixin, _UUIDMixin, _TimestampsMixin):
     pass
 
 
 @dataclass
-class Cabinet(Base, _ResourceMixin):
+class Cabinet(Base, ResourceMixin):
     __tablename__ = "cabinets"
 
     name: Mapped[str]
@@ -51,7 +51,7 @@ sa.Index("idx_cabinets_uuid", Cabinet.uuid)
 
 
 @dataclass
-class Drawer(Base, _ResourceMixin):
+class Drawer(Base, ResourceMixin):
     __tablename__ = "drawers"
 
     label: Mapped[str]
@@ -67,7 +67,7 @@ sa.Index("idx_drawers_cabinet", Drawer.cabinet_id)
 
 
 @dataclass
-class Component(Base, _ResourceMixin):
+class Component(Base, ResourceMixin):
     __tablename__ = "components"
 
     code: Mapped[str]
@@ -79,7 +79,7 @@ sa.Index("idx_components_uuid", Component.uuid)
 
 
 @dataclass
-class Collection(Base, _ResourceMixin):
+class Collection(Base, ResourceMixin):
     __tablename__ = "collections"
     __table_args__ = (sa.CheckConstraint("count >= 0"),)
 
