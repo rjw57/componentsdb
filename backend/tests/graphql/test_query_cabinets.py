@@ -1,7 +1,7 @@
 import pytest
 from faker import Faker
 
-from componentsdb.graphql.schema import schema
+from componentsdb.graphql import schema
 
 from ..asserts import expected_sql_query_count, expected_sql_query_maximum_count
 

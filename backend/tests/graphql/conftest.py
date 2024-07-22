@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from componentsdb.graphql.schema import context_from_db_session
+from componentsdb.graphql import context_from_db_session
 
 
 @pytest.fixture
