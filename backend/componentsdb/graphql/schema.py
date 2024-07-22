@@ -14,10 +14,15 @@ class Cabinet(Node):
     @strawberry.field
     def drawers(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
-    ) -> Connection["Drawer", Any]:
+    ) -> "DrawerConnection":
         return info.context["db_loaders"]["cabinet_drawer_connection"].make_connection(
             self.db_id, PaginationParams(after=after, first=first)
         )
+
+
+@strawberry.type
+class CabinetConnection(Connection[Cabinet, Any]):
+    pass
 
 
 @strawberry.type
@@ -26,11 +31,16 @@ class Drawer(Node):
 
 
 @strawberry.type
+class DrawerConnection(Connection[Drawer, Any]):
+    pass
+
+
+@strawberry.type
 class Query:
     @strawberry.field
     def cabinets(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
-    ) -> Connection[Cabinet, Any]:
+    ) -> CabinetConnection:
         return info.context["db_loaders"]["cabinet_connection"].make_connection(
             None, PaginationParams(after=after, first=first)
         )

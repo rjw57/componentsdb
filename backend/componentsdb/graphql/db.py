@@ -9,12 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from strawberry.dataloader import DataLoader
 
 from ..db import models as dbm
-from . import schema as s
+from . import schema
 from .pagination import DEFAULT_LIMIT, Connection, Edge, MinMaxIds, PaginationParams
 
 _R = TypeVar("_R", bound=dbm.ResourceMixin)
 _K = TypeVar("_K")
-_N = TypeVar("_N", bound="s.Node")
+_N = TypeVar("_N", bound="schema.Node")
 
 
 class ConnectionLoader(Generic[_K, _N], metaclass=ABCMeta):
@@ -51,11 +51,11 @@ class ConnectionLoader(Generic[_K, _N], metaclass=ABCMeta):
         pass  # pragma: no cover
 
 
-class CabinetConnectionLoader(ConnectionLoader[None, "s.Cabinet"]):
+class CabinetConnectionLoader(ConnectionLoader[None, "schema.Cabinet"]):
     async def _load_edges(
         self, keys: list[tuple[None, PaginationParams]]
-    ) -> list[list[Edge["s.Cabinet"]]]:
-        rvs: list[list[Edge[s.Cabinet]]] = []
+    ) -> list[list[Edge["schema.Cabinet"]]]:
+        rvs: list[list[Edge[schema.Cabinet]]] = []
         for k, p in keys:
             if p.after is None:
                 stmt = sa.select(dbm.Cabinet).order_by(dbm.Cabinet.id)
@@ -67,7 +67,7 @@ class CabinetConnectionLoader(ConnectionLoader[None, "s.Cabinet"]):
                 [
                     Edge(
                         cursor=cursor_from_uuid(c.uuid),
-                        node=s.Cabinet(db_id=c.id, id=c.uuid, name=c.name),
+                        node=schema.Cabinet(db_id=c.id, id=c.uuid, name=c.name),
                     )
                     for c in cabinets
                 ]
@@ -87,10 +87,10 @@ class CabinetConnectionLoader(ConnectionLoader[None, "s.Cabinet"]):
         return [MinMaxIds(min_id, max_id)] * len(keys)
 
 
-class CabinetDrawerConnectionLoader(ConnectionLoader[int, "s.Drawer"]):
+class CabinetDrawerConnectionLoader(ConnectionLoader[int, "schema.Drawer"]):
     async def _load_edges(
         self, keys: list[tuple[int, PaginationParams]]
-    ) -> list[list[Edge["s.Drawer"]]]:
+    ) -> list[list[Edge["schema.Drawer"]]]:
         if len(keys) == 0:
             return []
 
@@ -118,7 +118,7 @@ class CabinetDrawerConnectionLoader(ConnectionLoader[int, "s.Drawer"]):
             [
                 Edge(
                     cursor=cursor_from_uuid(d.uuid),
-                    node=s.Drawer(db_id=d.id, id=d.uuid, label=d.label),
+                    node=schema.Drawer(db_id=d.id, id=d.uuid, label=d.label),
                 )
                 for d in drawers_by_key_idx[key_idx]
             ]
