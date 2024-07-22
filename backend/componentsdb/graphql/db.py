@@ -28,7 +28,7 @@ def cursor_from_uuid(uuid_: UUID) -> str:
 
 async def query_cabinets(
     session: AsyncSession, after: Optional[str] = None, limit: Optional[int] = None
-) -> "s.CabinetConnection":
+) -> "s.Connection[s.Cabinet]":
     limit = limit if limit is not None else DEFAULT_LIMIT
     if after is None:
         stmt = sa.select(dbm.Cabinet).order_by(dbm.Cabinet.id)
@@ -45,7 +45,7 @@ async def count_cabinets(session: AsyncSession) -> int:
 
 async def query_drawers_for_cabinet_ids(
     db_session: AsyncSession, cabinet_uuids: list[str | UUID], limit: Optional[int] = None
-) -> list["s.DrawerConnection"]:
+) -> list["s.Connection[s.Drawer]"]:
     limit = limit if limit is not None else DEFAULT_LIMIT
     subq = (
         sa.select(dbm.Drawer)
@@ -74,9 +74,9 @@ async def query_drawers_for_cabinet_ids(
     ]
 
 
-def _cabinet_connection(cabinets: list[dbm.Cabinet], limit: int) -> "s.CabinetConnection":
+def _cabinet_connection(cabinets: list[dbm.Cabinet], limit: int) -> "s.Connection[s.Cabinet]":
     edges = [
-        s.CabinetEdge(
+        s.Edge(
             cursor=cursor_from_uuid(c.uuid),
             node=s.Cabinet(
                 id=c.uuid,
@@ -91,12 +91,12 @@ def _cabinet_connection(cabinets: list[dbm.Cabinet], limit: int) -> "s.CabinetCo
         has_next_page=len(cabinets) > limit,
     )
 
-    return s.CabinetConnection(edges=edges, page_info=page_info)
+    return s.Connection(edges=edges, page_info=page_info)
 
 
-def _drawer_connection(drawers: list[dbm.Drawer], limit: int) -> "s.DrawerConnection":
+def _drawer_connection(drawers: list[dbm.Drawer], limit: int) -> "s.Connection[s.Drawer]":
     edges = [
-        s.DrawerEdge(
+        s.Edge(
             cursor=cursor_from_uuid(c.uuid),
             node=s.Drawer(
                 id=c.uuid,
@@ -111,4 +111,4 @@ def _drawer_connection(drawers: list[dbm.Drawer], limit: int) -> "s.DrawerConnec
         has_next_page=len(drawers) > limit,
     )
 
-    return s.DrawerConnection(edges=edges, page_info=page_info)
+    return s.Connection(edges=edges, page_info=page_info)
