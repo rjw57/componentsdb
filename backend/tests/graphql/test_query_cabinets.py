@@ -137,3 +137,82 @@ async def test_paginated_drawers_query(db_session, cabinets, drawers, context, f
     cabinet = [c for c in cabinets if str(c.uuid) == cabinet_id][0]
     expected_ids = {str(d.uuid) for d in drawers if d.cabinet_id == cabinet.id}
     assert expected_ids == actual_ids
+
+
+@pytest.mark.asyncio
+async def test_basic_get(db_session, cabinets, context):
+    cabinet = cabinets[len(cabinets) >> 1]
+    query = "query ($id: ID!) { cabinet(id: $id) { id name } }"
+    with expected_sql_query_count(db_session, 1):
+        result = await schema.execute(
+            query, context_value=context, variable_values={"id": str(cabinet.uuid)}
+        )
+        assert result.errors is None
+    assert result.data is not None
+    c = result.data["cabinet"]
+    assert c is not None
+    assert c["id"] == str(cabinet.uuid)
+    assert c["name"] == cabinet.name
+
+
+@pytest.mark.asyncio
+async def test_single_cabinet_paginated_drawers_query(db_session, cabinets, drawers, context):
+    cabinet = cabinets[len(cabinets) >> 1]
+    after, first = None, 5
+    query = """
+        query ($id: ID!, $after: String, $first: Int) {
+            cabinet(id: $id) {
+                drawers(after: $after, first: $first) {
+                    nodes { id }
+                    pageInfo { endCursor hasNextPage }
+                }
+            }
+        }
+    """
+    actual_ids = set()
+    for _ in range(200):
+        with expected_sql_query_maximum_count(db_session, 3):
+            result = await schema.execute(
+                query,
+                context_value=context,
+                variable_values={"id": str(cabinet.uuid), "after": after, "first": first},
+            )
+            assert result.errors is None
+        assert result.data is not None
+        assert result.data["cabinet"] is not None
+        cabinet_node = result.data["cabinet"]
+        drawer_nodes = cabinet_node["drawers"]["nodes"]
+        actual_ids.update({n["id"] for n in drawer_nodes})
+        if not cabinet_node["drawers"]["pageInfo"]["hasNextPage"]:
+            break
+        after = cabinet_node["drawers"]["pageInfo"]["endCursor"]
+    else:
+        assert False, "Infinite pagination loop?"
+
+    expected_ids = {str(d.uuid) for d in drawers if d.cabinet_id == cabinet.id}
+    assert expected_ids == actual_ids
+
+
+@pytest.mark.asyncio
+async def test_single_cabinet_drawer_count(db_session, cabinets, drawers, context):
+    cabinet = cabinets[len(cabinets) >> 1]
+    query = """
+        query ($id: ID!) {
+            cabinet(id: $id) {
+                drawers {
+                    count
+                }
+            }
+        }
+    """
+    with expected_sql_query_maximum_count(db_session, 2):
+        result = await schema.execute(
+            query, context_value=context, variable_values={"id": str(cabinet.uuid)}
+        )
+        assert result.errors is None
+    assert result.data is not None
+    assert result.data["cabinet"] is not None
+    assert result.data["cabinet"]["drawers"] is not None
+    count = result.data["cabinet"]["drawers"]["count"]
+    expected_drawers = [d for d in drawers if d.cabinet_id == cabinet.id]
+    assert len(expected_drawers) == count
