@@ -52,11 +52,6 @@ class RelatedComponentLoader(RelatedEntityLoader[dbm.Component, "types.Component
         super().__init__(session, dbm.Component, component_node_factory)
 
 
-class RelatedCollectionLoader(RelatedEntityLoader[dbm.Collection, "types.Collection"]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Collection, collection_node_factory)
-
-
 class CabinetConnectionFactory(EntityConnectionFactory[dbm.Cabinet, "types.Cabinet"]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Cabinet, cabinet_node_factory)
