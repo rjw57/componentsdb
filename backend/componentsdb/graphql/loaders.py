@@ -2,47 +2,50 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import models as dbm
 from . import types
-from .connectionloaders import (
-    EntityConnectionLoader,
-    OneToManyRelationshipConnectionLoader,
+from .genericloaders import (
+    EntityConnectionFactory,
+    EntityLoader,
+    OneToManyRelationshipConnectionFactory,
+    RelatedEntityLoader,
 )
 
 
-def cabinet_node_from_db_model(o: dbm.Cabinet) -> "types.Cabinet":
-    return types.Cabinet(db_id=o.id, id=o.uuid, name=o.name)
+def cabinet_node_factory(o: dbm.Cabinet) -> "types.Cabinet":
+    return types.Cabinet(db_resource=o, id=o.uuid, name=o.name)
 
 
-def drawer_node_from_db_model(o: dbm.Drawer) -> "types.Drawer":
-    return types.Drawer(db_id=o.id, id=o.uuid, label=o.label)
+def drawer_node_factory(o: dbm.Drawer) -> "types.Drawer":
+    return types.Drawer(db_resource=o, id=o.uuid, label=o.label)
 
 
-def collection_node_from_db_model(o: dbm.Collection) -> "types.Collection":
-    return types.Collection(db_id=o.id, id=o.uuid, count=o.count)
+def collection_node_factory(o: dbm.Collection) -> "types.Collection":
+    return types.Collection(db_resource=o, id=o.uuid, count=o.count)
 
 
-class CabinetConnectionLoader(EntityConnectionLoader[dbm.Cabinet, "types.Cabinet"]):
+class CabinetLoader(EntityLoader[dbm.Cabinet, "types.Cabinet"]):
     def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Cabinet)
-
-    def node_factory(self, db_entity: dbm.Cabinet) -> "types.Cabinet":
-        return cabinet_node_from_db_model(db_entity)
+        super().__init__(session, dbm.Cabinet, cabinet_node_factory)
 
 
-class CabinetDrawerConnectionLoader(
-    OneToManyRelationshipConnectionLoader[dbm.Drawer, "types.Drawer"]
+class RelatedCabinetLoader(RelatedEntityLoader[dbm.Cabinet, "types.Cabinet"]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Cabinet, cabinet_node_factory)
+
+
+class CabinetConnectionFactory(EntityConnectionFactory[dbm.Cabinet, "types.Cabinet"]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Cabinet, cabinet_node_factory)
+
+
+class CabinetDrawerConnectionFactory(
+    OneToManyRelationshipConnectionFactory[dbm.Drawer, "types.Drawer"]
 ):
     def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Cabinet.drawers)
-
-    def node_factory(self, db_entity: dbm.Drawer) -> "types.Drawer":
-        return drawer_node_from_db_model(db_entity)
+        super().__init__(session, dbm.Cabinet.drawers, drawer_node_factory)
 
 
-class DrawerCollectionConnectionLoader(
-    OneToManyRelationshipConnectionLoader[dbm.Collection, "types.Collection"]
+class DrawerCollectionConnectionFactory(
+    OneToManyRelationshipConnectionFactory[dbm.Collection, "types.Collection"]
 ):
     def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Drawer.collections)
-
-    def node_factory(self, db_entity: dbm.Collection) -> "types.Collection":
-        return collection_node_from_db_model(db_entity)
+        super().__init__(session, dbm.Drawer.collections, collection_node_factory)

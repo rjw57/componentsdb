@@ -3,12 +3,14 @@ from typing import Any, Generic, NamedTuple, Optional, TypeVar
 import strawberry
 from strawberry.dataloader import DataLoader
 
+from ..db.models import ResourceMixin
+
 DEFAULT_LIMIT = 100
 
 
 @strawberry.type
 class Node:
-    db_id: strawberry.Private[int]
+    db_resource: strawberry.Private[ResourceMixin]
     id: strawberry.ID
 
 
@@ -87,9 +89,9 @@ class Connection(Generic[_N]):
         edges = await self._get_edges()
         min_max_ids = await self.min_max_ids_loader.load(self.loader_key)
         return PageInfo(
-            start_db_id=edges[0].node.db_id if len(edges) > 0 else None,
+            start_db_id=edges[0].node.db_resource.id if len(edges) > 0 else None,
             start_cursor=edges[0].cursor if len(edges) > 0 else None,
-            end_db_id=edges[0].node.db_id if len(edges) > 0 else None,
+            end_db_id=edges[0].node.db_resource.id if len(edges) > 0 else None,
             end_cursor=edges[0].cursor if len(edges) > 0 else None,
             min_max_ids=min_max_ids,
         )

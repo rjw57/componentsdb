@@ -219,6 +219,36 @@ async def test_single_cabinet_drawer_count(db_session, cabinets, drawers, contex
 
 
 @pytest.mark.asyncio
+async def test_cabinet_drawers_backref(db_session, cabinets, drawers, context):
+    query = """query {
+        cabinets {
+            nodes {
+                id
+                drawers {
+                    nodes {
+                        cabinet {
+                            id
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    with expected_sql_query_maximum_count(db_session, 3):
+        result = await schema.execute(query, context_value=context)
+        assert result.errors is None
+        assert result.data is not None
+
+    cabinet_nodes = result.data["cabinets"]["nodes"]
+    assert len(cabinet_nodes) > 0
+
+    for cn in cabinet_nodes:
+        for dn in cn["drawers"]["nodes"]:
+            assert dn["cabinet"]["id"] == cn["id"]
+
+
+@pytest.mark.asyncio
 async def test_basic_collections_query(db_session, cabinets, drawers, collections, context):
     query = """query {
         cabinets {

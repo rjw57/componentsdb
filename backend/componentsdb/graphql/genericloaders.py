@@ -1,10 +1,11 @@
 import base64
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, Optional, TypeVar
 from uuid import UUID
 
 import sqlalchemy as sa
+import strawberry
 from sqlalchemy.ext.asyncio import AsyncSession
 from strawberry.dataloader import DataLoader
 
@@ -37,7 +38,7 @@ def cursor_from_uuid(uuid_: UUID) -> str:
     return base64.standard_b64encode(uuid_.bytes).decode("ascii")
 
 
-class ConnectionLoader(Generic[_K, _N], metaclass=ABCMeta):
+class ConnectionFactory(Generic[_K, _N], metaclass=ABCMeta):
     _session: AsyncSession
     _edges_loader: DataLoader[tuple[Any, PaginationParams], list[Edge[_N]]]
     _count_loader: DataLoader[Any, int]
@@ -71,12 +72,17 @@ class ConnectionLoader(Generic[_K, _N], metaclass=ABCMeta):
         pass  # pragma: no cover
 
 
-class OneToManyRelationshipConnectionLoader(Generic[_R, _N], ConnectionLoader[int, _N]):
+class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[int, _N]):
+    """
+    A ConnectionFactory which follows one to many relationships.
+    """
+
     relationship: sa.orm.Relationship
     entity_model: type[_R]
     foreign_key_column: sa.Column
+    node_factory: Callable[[_R], _N]
 
-    def __init__(self, session: AsyncSession, relationship: Any):
+    def __init__(self, session: AsyncSession, relationship: Any, node_factory: Callable[[_R], _N]):
         super().__init__(session)
         self.relationship = sa.inspect(relationship)
         assert isinstance(self.relationship, sa.orm.QueryableAttribute)
@@ -84,10 +90,7 @@ class OneToManyRelationshipConnectionLoader(Generic[_R, _N], ConnectionLoader[in
         assert self.relationship.property.direction == sa.orm.RelationshipDirection.ONETOMANY
         self.entity_model = self.relationship.property.entity.class_
         self.foreign_key_column = self.relationship.property.local_remote_pairs[0][1]
-
-    @abstractmethod
-    def node_factory(self, db_entity: _R) -> _N:
-        pass  # pragma: no cover
+        self.node_factory = node_factory
 
     async def _load_edges(self, keys: list[tuple[int, PaginationParams]]) -> list[list[Edge[_N]]]:
         if len(keys) == 0:
@@ -154,14 +157,17 @@ class OneToManyRelationshipConnectionLoader(Generic[_R, _N], ConnectionLoader[in
         return [min_max_by_id.get(id_, None) for id_ in keys]
 
 
-class EntityConnectionLoader(Generic[_R, _N], ConnectionLoader[None, _N]):
-    def __init__(self, session: AsyncSession, mapper: Any):
-        super().__init__(session)
-        self.model = sa.inspect(dbm.Cabinet).entity
+class EntityConnectionFactory(Generic[_R, _N], ConnectionFactory[None, _N]):
+    """
+    A ConnectionFactory which can load lists of objects from the database.
+    """
 
-    @abstractmethod
-    def node_factory(self, db_entity: _R) -> _N:
-        pass  # pragma: no cover
+    node_factory: Callable[[_R], _N]
+
+    def __init__(self, session: AsyncSession, mapper: Any, node_factory: Callable[[_R], _N]):
+        super().__init__(session)
+        self.model = sa.inspect(mapper).entity
+        self.node_factory = node_factory
 
     async def _load_edges(self, keys: list[tuple[None, PaginationParams]]) -> list[list[Edge[_N]]]:
         rvs: list[list[Edge[_N]]] = []
@@ -194,3 +200,45 @@ class EntityConnectionLoader(Generic[_R, _N], ConnectionLoader[None, _N]):
         min_max_id_stmt = sa.select(sa.func.min(self.model.id), sa.func.max(self.model.id))
         min_id, max_id = (await self._session.execute(min_max_id_stmt)).one()
         return [MinMaxIds(min_id, max_id)] * len(keys)
+
+
+class RelatedEntityLoader(Generic[_R, _N], DataLoader[int, _N]):
+    """
+    A DataLoader which can load database entities given the database primary key.
+    """
+
+    session: AsyncSession
+    node_factory: Callable[[_R], _N]
+
+    def __init__(
+        self, session: AsyncSession, mapper: Any, node_factory: Callable[[_R], _N], **kwargs
+    ):
+        super().__init__(load_fn=self._load, **kwargs)
+        self.session = session
+        self.model = sa.inspect(mapper).entity
+        self.node_factory = node_factory
+
+    async def _load(self, keys: list[int]) -> list[_N]:
+        stmt = sa.select(self.model).where(self.model.id.in_(keys)).order_by(self.model.id.asc())
+        return [self.node_factory(o) for o in (await self.session.execute(stmt)).scalars()]
+
+
+class EntityLoader(Generic[_R, _N], DataLoader[strawberry.ID, _N]):
+    """
+    A DataLoader which can load database entities given their GraphQL id.
+    """
+
+    session: AsyncSession
+    node_factory: Callable[[_R], _N]
+
+    def __init__(
+        self, session: AsyncSession, mapper: Any, node_factory: Callable[[_R], _N], **kwargs
+    ):
+        super().__init__(load_fn=self._load, **kwargs)
+        self.session = session
+        self.model = sa.inspect(mapper).entity
+        self.node_factory = node_factory
+
+    async def _load(self, keys: list[strawberry.ID]) -> list[_N]:
+        stmt = sa.select(self.model).where(self.model.uuid.in_(keys)).order_by(self.model.id.asc())
+        return [self.node_factory(o) for o in (await self.session.execute(stmt)).scalars()]
