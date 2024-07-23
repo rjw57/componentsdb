@@ -1,4 +1,4 @@
-from typing import Generic, NamedTuple, Optional, TypeVar
+from typing import Any, Generic, NamedTuple, Optional, TypeVar
 
 import strawberry
 from strawberry.dataloader import DataLoader
@@ -13,7 +13,6 @@ class Node:
 
 
 _N = TypeVar("_N", bound=Node)
-_K = TypeVar("_K")
 
 
 class PaginationParams(NamedTuple):
@@ -59,12 +58,14 @@ class PageInfo:
 
 
 @strawberry.type
-class Connection(Generic[_N, _K]):
-    loader_key: strawberry.Private[_K]
+class Connection(Generic[_N]):
+    loader_key: strawberry.Private[Any]
     pagination_params: strawberry.Private[PaginationParams]
-    edges_loader: strawberry.Private[DataLoader[tuple[_K, PaginationParams], list[Edge[_N]]]]
-    count_loader: strawberry.Private[DataLoader[_K, int]]
-    min_max_ids_loader: strawberry.Private[DataLoader[_K, MinMaxIds]]
+    edges_loader: strawberry.Private[
+        DataLoader[tuple[type["loader_key"], PaginationParams], list[Edge[_N]]]
+    ]
+    count_loader: strawberry.Private[DataLoader[type["loader_key"], int]]
+    min_max_ids_loader: strawberry.Private[DataLoader[type["loader_key"], MinMaxIds]]
 
     async def _get_edges(self) -> list[Edge[_N]]:
         return await self.edges_loader.load((self.loader_key, self.pagination_params))

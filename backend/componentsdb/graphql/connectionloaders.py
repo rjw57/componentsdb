@@ -13,8 +13,8 @@ from . import types
 from .pagination import DEFAULT_LIMIT, Connection, Edge, MinMaxIds, PaginationParams
 
 _R = TypeVar("_R", bound=dbm.ResourceMixin)
-_K = TypeVar("_K")
 _N = TypeVar("_N", bound="types.Node")
+_K = TypeVar("_K")
 
 
 def select_after_uuid(
@@ -39,9 +39,9 @@ def cursor_from_uuid(uuid_: UUID) -> str:
 
 class ConnectionLoader(Generic[_K, _N], metaclass=ABCMeta):
     _session: AsyncSession
-    _edges_loader: DataLoader[tuple[_K, PaginationParams], list[Edge[_N]]]
-    _count_loader: DataLoader[_K, int]
-    _min_max_ids_loader: DataLoader[_K, MinMaxIds]
+    _edges_loader: DataLoader[tuple[Any, PaginationParams], list[Edge[_N]]]
+    _count_loader: DataLoader[Any, int]
+    _min_max_ids_loader: DataLoader[Any, MinMaxIds]
 
     def __init__(self, session: AsyncSession):
         self._session = session
@@ -49,8 +49,8 @@ class ConnectionLoader(Generic[_K, _N], metaclass=ABCMeta):
         self._count_loader = DataLoader(load_fn=self._load_counts)
         self._min_max_ids_loader = DataLoader(load_fn=self._load_min_max_ids)
 
-    def make_connection(self, key: _K, pagination_params: PaginationParams):
-        return Connection(
+    def make_connection(self, key: _K, pagination_params: PaginationParams) -> Connection[_N]:
+        return Connection[_N](
             loader_key=key,
             pagination_params=pagination_params,
             edges_loader=self._edges_loader,

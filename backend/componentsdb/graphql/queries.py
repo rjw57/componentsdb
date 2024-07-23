@@ -5,7 +5,7 @@ import strawberry
 
 from ..db import models as dbm
 from . import loaders, types
-from .pagination import PaginationParams
+from .pagination import Connection, PaginationParams
 
 
 @strawberry.type
@@ -13,7 +13,7 @@ class Query:
     @strawberry.field
     def cabinets(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
-    ) -> types.CabinetConnection:
+    ) -> Connection[types.Cabinet]:
         return info.context["db_loaders"]["cabinet_connection"].make_connection(
             None, PaginationParams(after=after, first=first)
         )
