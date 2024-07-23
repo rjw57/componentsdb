@@ -189,10 +189,8 @@ class EntityConnectionFactory(Generic[_R, _N], ConnectionFactory[None, _N]):
         return rvs
 
     async def _load_counts(self, keys: list[None]) -> list[int]:
-        cabinet_count = (
-            await self._session.execute(sa.select(sa.func.count(self.model.id)))
-        ).scalar_one()
-        return [cabinet_count] * len(keys)
+        count = (await self._session.execute(sa.select(sa.func.count(self.model.id)))).scalar_one()
+        return [count] * len(keys)
 
     async def _load_min_max_ids(self, keys: list[None]) -> list[Optional[MinMaxIds]]:
         min_max_id_stmt = sa.select(sa.func.min(self.model.id), sa.func.max(self.model.id))
