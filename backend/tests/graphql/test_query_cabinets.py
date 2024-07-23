@@ -233,6 +233,32 @@ async def test_single_cabinet_drawer_count(db_session, cabinets, drawers, contex
 
 
 @pytest.mark.asyncio
+async def test_single_cabinet_no_drawers(db_session, cabinets, context):
+    cabinet = cabinets[len(cabinets) >> 1]
+    query = """
+        query ($id: ID!) {
+            cabinet(id: $id) {
+                drawers {
+                    count
+                    pageInfo { endCursor hasNextPage }
+                }
+            }
+        }
+    """
+    with expected_sql_query_maximum_count(db_session, 4):
+        result = await schema.execute(
+            query, context_value=context, variable_values={"id": str(cabinet.uuid)}
+        )
+        assert result.errors is None
+        assert result.data is not None
+    assert result.data["cabinet"] is not None
+    assert result.data["cabinet"]["drawers"] is not None
+    assert result.data["cabinet"]["drawers"]["count"] == 0
+    assert result.data["cabinet"]["drawers"]["pageInfo"]["endCursor"] is None
+    assert not result.data["cabinet"]["drawers"]["pageInfo"]["hasNextPage"]
+
+
+@pytest.mark.asyncio
 async def test_cabinet_drawers_backref(db_session, cabinets, drawers, context):
     query = """query {
         cabinets {
