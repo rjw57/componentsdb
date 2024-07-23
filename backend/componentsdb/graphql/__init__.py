@@ -13,5 +13,6 @@ def context_from_db_session(session: AsyncSession):
             "session": session,
             "cabinet_connection": loaders.CabinetConnectionLoader(session),
             "cabinet_drawer_connection": loaders.CabinetDrawerConnectionLoader(session),
+            "drawer_collection_connection": loaders.DrawerCollectionConnectionLoader(session),
         }
     }

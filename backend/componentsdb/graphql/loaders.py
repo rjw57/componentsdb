@@ -16,6 +16,10 @@ def drawer_node_from_db_model(o: dbm.Drawer) -> "types.Drawer":
     return types.Drawer(db_id=o.id, id=o.uuid, label=o.label)
 
 
+def collection_node_from_db_model(o: dbm.Collection) -> "types.Collection":
+    return types.Collection(db_id=o.id, id=o.uuid, count=o.count)
+
+
 class CabinetConnectionLoader(EntityConnectionLoader[dbm.Cabinet, "types.Cabinet"]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Cabinet)
@@ -32,3 +36,13 @@ class CabinetDrawerConnectionLoader(
 
     def node_factory(self, db_entity: dbm.Drawer) -> "types.Drawer":
         return drawer_node_from_db_model(db_entity)
+
+
+class DrawerCollectionConnectionLoader(
+    OneToManyRelationshipConnectionLoader[dbm.Collection, "types.Collection"]
+):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Drawer.collections)
+
+    def node_factory(self, db_entity: dbm.Collection) -> "types.Collection":
+        return collection_node_from_db_model(db_entity)

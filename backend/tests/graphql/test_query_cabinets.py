@@ -216,3 +216,32 @@ async def test_single_cabinet_drawer_count(db_session, cabinets, drawers, contex
     count = result.data["cabinet"]["drawers"]["count"]
     expected_drawers = [d for d in drawers if d.cabinet_id == cabinet.id]
     assert len(expected_drawers) == count
+
+
+@pytest.mark.asyncio
+async def test_basic_collections_query(db_session, cabinets, drawers, collections, context):
+    query = """query {
+        cabinets {
+            nodes {
+                id
+                drawers {
+                    nodes {
+                        id
+                        collections {
+                            nodes {
+                                id
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    with expected_sql_query_maximum_count(db_session, 3):
+        result = await schema.execute(query, context_value=context)
+        assert result.errors is None
+        assert result.data is not None
+
+    cabinet_nodes = result.data["cabinets"]["nodes"]
+    assert len(cabinet_nodes) > 0

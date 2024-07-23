@@ -21,3 +21,16 @@ class Cabinet(Node):
 @strawberry.type
 class Drawer(Node):
     label: str
+
+    @strawberry.field
+    def collections(
+        self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
+    ) -> "Connection[Collection]":
+        return info.context["db_loaders"]["drawer_collection_connection"].make_connection(
+            self.db_id, PaginationParams(after=after, first=first)
+        )
+
+
+@strawberry.type
+class Collection(Node):
+    count: int
