@@ -83,5 +83,5 @@ class Query:
         )
 
     @strawberry.field
-    async def cabinet(self, info: strawberry.Info, id: strawberry.ID) -> Cabinet:
+    async def cabinet(self, info: strawberry.Info, id: strawberry.ID) -> Optional[Cabinet]:
         return await info.context["db_loaders"]["cabinet"].load(id)

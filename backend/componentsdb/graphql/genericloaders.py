@@ -202,7 +202,8 @@ class EntityConnectionFactory(Generic[_R, _N], ConnectionFactory[None, _N]):
 
 class RelatedEntityLoader(Generic[_R, _N], DataLoader[int, _N]):
     """
-    A DataLoader which can load database entities given the database primary key.
+    A DataLoader which can load database entities given the database primary key. This should only
+    ever by used from objects which exist in the database and so all keys are assumed to exist.
     """
 
     session: AsyncSession
@@ -218,12 +219,14 @@ class RelatedEntityLoader(Generic[_R, _N], DataLoader[int, _N]):
 
     async def _load(self, keys: list[int]) -> list[_N]:
         stmt = sa.select(self.model).where(self.model.id.in_(keys)).order_by(self.model.id.asc())
-        return [self.node_factory(o) for o in (await self.session.execute(stmt)).scalars()]
+        entities_by_key = {o.id: o for o in (await self.session.execute(stmt)).scalars()}
+        return [self.node_factory(entities_by_key[k]) for k in keys]
 
 
 class EntityLoader(Generic[_R, _N], DataLoader[strawberry.ID, _N]):
     """
-    A DataLoader which can load database entities given their GraphQL id.
+    A DataLoader which can load database entities given their GraphQL id. If no matching object
+    exists, None is returned.
     """
 
     session: AsyncSession
@@ -237,6 +240,8 @@ class EntityLoader(Generic[_R, _N], DataLoader[strawberry.ID, _N]):
         self.model = sa.inspect(mapper).entity
         self.node_factory = node_factory
 
-    async def _load(self, keys: list[strawberry.ID]) -> list[_N]:
+    async def _load(self, keys: list[strawberry.ID]) -> list[Optional[_N]]:
         stmt = sa.select(self.model).where(self.model.uuid.in_(keys)).order_by(self.model.id.asc())
-        return [self.node_factory(o) for o in (await self.session.execute(stmt)).scalars()]
+        entities_by_key = {str(o.uuid): o for o in (await self.session.execute(stmt)).scalars()}
+        entities = [entities_by_key.get(k, None) for k in keys]
+        return [self.node_factory(e) if e is not None else None for e in entities]

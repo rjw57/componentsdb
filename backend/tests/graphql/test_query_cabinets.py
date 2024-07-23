@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from faker import Faker
 
@@ -153,6 +155,18 @@ async def test_basic_get(db_session, cabinets, context):
     assert c is not None
     assert c["id"] == str(cabinet.uuid)
     assert c["name"] == cabinet.name
+
+
+@pytest.mark.asyncio
+async def test_basic_get_does_not_exist(db_session, cabinets, context):
+    query = "query ($id: ID!) { cabinet(id: $id) { id name } }"
+    with expected_sql_query_count(db_session, 1):
+        result = await schema.execute(
+            query, context_value=context, variable_values={"id": str(uuid.uuid4())}
+        )
+        assert result.errors is None
+        assert result.data is not None
+    assert result.data["cabinet"] is None
 
 
 @pytest.mark.asyncio
