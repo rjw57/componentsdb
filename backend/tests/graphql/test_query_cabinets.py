@@ -249,7 +249,7 @@ async def test_cabinet_drawers_backref(db_session, cabinets, drawers, context):
 
 
 @pytest.mark.asyncio
-async def test_basic_collections_query(db_session, cabinets, drawers, collections, context):
+async def test_basic_collections_query(db_session, all_fakes, context):
     query = """query {
         cabinets {
             nodes {
@@ -260,6 +260,10 @@ async def test_basic_collections_query(db_session, cabinets, drawers, collection
                         collections {
                             nodes {
                                 id
+                                component {
+                                    id
+                                    code
+                                }
                             }
                         }
                     }
@@ -268,7 +272,41 @@ async def test_basic_collections_query(db_session, cabinets, drawers, collection
         }
     }
     """
-    with expected_sql_query_maximum_count(db_session, 3):
+    with expected_sql_query_maximum_count(db_session, 4):
+        result = await schema.execute(query, context_value=context)
+        assert result.errors is None
+        assert result.data is not None
+
+    cabinet_nodes = result.data["cabinets"]["nodes"]
+    assert len(cabinet_nodes) > 0
+
+
+@pytest.mark.asyncio
+async def test_extreme_back_reference_query(db_session, all_fakes, context):
+    query = """query {
+        cabinets {
+            nodes {
+                id
+                drawers {
+                    nodes {
+                        id
+                        cabinet { id }
+                        collections {
+                            nodes {
+                                id
+                                drawer { id cabinet { id } }
+                                component {
+                                    collections { nodes { id drawer { id cabinet { id } } } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    """
+    with expected_sql_query_maximum_count(db_session, 7):
         result = await schema.execute(query, context_value=context)
         assert result.errors is None
         assert result.data is not None

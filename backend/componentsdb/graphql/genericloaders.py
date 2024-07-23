@@ -96,29 +96,27 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         if len(keys) == 0:
             return []
 
-        db_entities_by_key_idx = defaultdict[int, list[_R]](list)
-
-        if len(keys) > 0:
-            sub_stmts: list[sa.Select] = []
-            for key_idx, (cabinet_id, p) in enumerate(keys):
-                first = p.first if p.first is not None else DEFAULT_LIMIT
-                stmt = (
-                    sa.select(self.entity_model, sa.literal(key_idx).label("key_idx"))
-                    .where(self.foreign_key_column == cabinet_id)
-                    .order_by(self.entity_model.id.asc())
-                )
-                if p.after is not None:
-                    stmt = select_after_uuid(
-                        self.entity_model, uuid_from_cursor(p.after), base_select=stmt
-                    )
-                stmt = stmt.limit(first)
-                sub_stmts.append(stmt)
-            stmt = sa.select(self.entity_model, sa.literal_column("key_idx")).from_statement(
-                sa.union_all(*sub_stmts)
+        sub_stmts: list[sa.Select] = []
+        for key_idx, (cabinet_id, p) in enumerate(keys):
+            first = p.first if p.first is not None else DEFAULT_LIMIT
+            stmt = (
+                sa.select(self.entity_model, sa.literal(key_idx).label("key_idx"))
+                .where(self.foreign_key_column == cabinet_id)
+                .order_by(self.entity_model.id.asc())
             )
+            if p.after is not None:
+                stmt = select_after_uuid(
+                    self.entity_model, uuid_from_cursor(p.after), base_select=stmt
+                )
+            stmt = stmt.limit(first)
+            sub_stmts.append(stmt)
+        stmt = sa.select(self.entity_model, sa.literal_column("key_idx")).from_statement(
+            sa.union_all(*sub_stmts)
+        )
 
-            for d, key_idx in await self._session.execute(stmt):
-                db_entities_by_key_idx[key_idx].append(d)
+        db_entities_by_key_idx = defaultdict[int, list[_R]](list)
+        for d, key_idx in await self._session.execute(stmt):
+            db_entities_by_key_idx[key_idx].append(d)
 
         return [
             [

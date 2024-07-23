@@ -45,6 +45,32 @@ class Collection(Node):
     db_resource: strawberry.Private[dbm.Collection]
     count: int
 
+    @strawberry.field
+    async def component(self, info: strawberry.Info) -> "Component":
+        return await info.context["db_loaders"]["related_component"].load(
+            self.db_resource.component_id
+        )
+
+    @strawberry.field
+    async def drawer(self, info: strawberry.Info) -> "Drawer":
+        return await info.context["db_loaders"]["related_drawer"].load(self.db_resource.drawer_id)
+
+
+@strawberry.type
+class Component(Node):
+    db_resource: strawberry.Private[dbm.Component]
+    code: str
+    description: Optional[str]
+    datasheet_url: Optional[str]
+
+    @strawberry.field
+    def collections(
+        self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
+    ) -> "Connection[Collection]":
+        return info.context["db_loaders"]["component_collection_connection"].make_connection(
+            self.db_resource.id, PaginationParams(after=after, first=first)
+        )
+
 
 @strawberry.type
 class Query:

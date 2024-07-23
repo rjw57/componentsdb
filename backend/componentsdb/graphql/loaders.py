@@ -22,6 +22,16 @@ def collection_node_factory(o: dbm.Collection) -> "types.Collection":
     return types.Collection(db_resource=o, id=o.uuid, count=o.count)
 
 
+def component_node_factory(o: dbm.Component) -> "types.Component":
+    return types.Component(
+        db_resource=o,
+        id=o.uuid,
+        code=o.code,
+        description=o.description,
+        datasheet_url=o.datasheet_url,
+    )
+
+
 class CabinetLoader(EntityLoader[dbm.Cabinet, "types.Cabinet"]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Cabinet, cabinet_node_factory)
@@ -30,6 +40,21 @@ class CabinetLoader(EntityLoader[dbm.Cabinet, "types.Cabinet"]):
 class RelatedCabinetLoader(RelatedEntityLoader[dbm.Cabinet, "types.Cabinet"]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Cabinet, cabinet_node_factory)
+
+
+class RelatedDrawerLoader(RelatedEntityLoader[dbm.Drawer, "types.Drawer"]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Drawer, drawer_node_factory)
+
+
+class RelatedComponentLoader(RelatedEntityLoader[dbm.Component, "types.Component"]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Component, component_node_factory)
+
+
+class RelatedCollectionLoader(RelatedEntityLoader[dbm.Collection, "types.Collection"]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Collection, collection_node_factory)
 
 
 class CabinetConnectionFactory(EntityConnectionFactory[dbm.Cabinet, "types.Cabinet"]):
@@ -49,3 +74,10 @@ class DrawerCollectionConnectionFactory(
 ):
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Drawer.collections, collection_node_factory)
+
+
+class ComponentCollectionConnectionFactory(
+    OneToManyRelationshipConnectionFactory[dbm.Collection, "types.Collection"]
+):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Component.collections, collection_node_factory)
