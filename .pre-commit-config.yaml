@@ -60,12 +60,6 @@ repos:
     hooks:
       - id: actionlint
 
-  - repo: https://github.com/python-openapi/openapi-spec-validator
-    rev: 0.7.1
-    hooks:
-      - id: openapi-spec-validator
-        files: openapi/.*\.yaml
-
   - repo: local
     hooks:
       - id: gen-backend-api-model
