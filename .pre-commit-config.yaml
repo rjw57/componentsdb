@@ -53,7 +53,7 @@ repos:
     hooks:
       - id: mypy
         exclude: ^backend/alembic/
-        additional_dependencies: ["strawberry-graphql"]
+        additional_dependencies: ["strawberry-graphql", "types-requests"]
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.1
