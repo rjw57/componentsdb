@@ -37,7 +37,7 @@ def validate_issuer(unvalidated_issuer: str) -> ValidatedIssuer:
         InvalidIssuer: the issuer is not correctly formed.
     """
     if not validate_url(unvalidated_issuer):
-        raise InvalidIssuer("Issuer is not valid URL.")
+        raise InvalidIssuer("Issuer is not a valid URL.")
     if urlparse(unvalidated_issuer).scheme != "https":
         raise InvalidIssuer("Issuer does not have a https scheme.")
     return cast(ValidatedIssuer, unvalidated_issuer)
@@ -57,7 +57,7 @@ def validate_jwks_url(unvalidated_jwks_url: str) -> ValidatedJWKSUrl:
         InvalidJWKSUrl: the JWKS URL is not correctly formed.
     """
     if not validate_url(unvalidated_jwks_url):
-        raise InvalidJWKSUrl("JWKS URL is not valid URL.")
+        raise InvalidJWKSUrl("JWKS URL is not a valid URL.")
     if urlparse(unvalidated_jwks_url).scheme != "https":
         raise InvalidJWKSUrl("JWKS URL does not have a https scheme.")
     return cast(ValidatedJWKSUrl, unvalidated_jwks_url)
@@ -98,6 +98,7 @@ def _jwks_url_from_oidc_discovery_document(
 def fetch_jwks(unvalidated_issuer: str, fetch: FetchCallable) -> JWKSet:
     "Fetch a JWK set from an unvalidated issuer."
     oidc_discovery_doc = fetch(oidc_discovery_document_url(validate_issuer(unvalidated_issuer)))
+    print("xxx", oidc_discovery_doc)
     jwks_url = _jwks_url_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
     return JWKSet.from_json(fetch(jwks_url))
 
