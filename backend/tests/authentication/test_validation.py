@@ -1,3 +1,6 @@
+import datetime
+from typing import Any
+
 import pytest
 from faker import Faker
 from jwcrypto.jwk import JWK
@@ -82,4 +85,36 @@ def test_issuer_not_url(
     with pytest.raises(exc.InvalidIssuerError):
         validate_token(
             make_jwt(oidc_claims, jwks[alg], alg), audiences=[oidc_audience], issuers=[iss]
+        )
+
+
+@pytest.mark.parametrize("alg", ["RS256", "ES256"])
+def test_exp_claim_in_past(
+    alg: str,
+    faker: Faker,
+    oidc_claims: dict[str, Any],
+    oidc_audience: str,
+    jwt_issuer: str,
+    jwks: dict[str, JWK],
+):
+    oidc_claims["exp"] = datetime.datetime.now(datetime.UTC).timestamp() - 100000
+    with pytest.raises(exc.InvalidTokenError):
+        validate_token(
+            make_jwt(oidc_claims, jwks[alg], alg), audiences=[oidc_audience], issuers=[jwt_issuer]
+        )
+
+
+@pytest.mark.parametrize("alg", ["RS256", "ES256"])
+def test_nbf_claim_in_future(
+    alg: str,
+    faker: Faker,
+    oidc_claims: dict[str, Any],
+    oidc_audience: str,
+    jwt_issuer: str,
+    jwks: dict[str, JWK],
+):
+    oidc_claims["nbf"] = datetime.datetime.now(datetime.UTC).timestamp() + 100000
+    with pytest.raises(exc.InvalidTokenError):
+        validate_token(
+            make_jwt(oidc_claims, jwks[alg], alg), audiences=[oidc_audience], issuers=[jwt_issuer]
         )

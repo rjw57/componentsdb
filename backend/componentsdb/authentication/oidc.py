@@ -2,6 +2,7 @@ import json
 from typing import Any, NewType, cast
 from urllib.parse import urlparse
 
+from jwcrypto.common import JWException
 from jwcrypto.jwk import JWKSet
 from jwcrypto.jwt import JWT
 from validators.url import url as validate_url
@@ -164,17 +165,22 @@ def unvalidated_claim_from_token(unvalidated_token: str, claim: str) -> str:
         raise InvalidTokenError(f"Claim '{claim}' not present in token paylaod.")
 
 
+def _make_and_validate_token(unvalidated_token: str, jwk_set: JWKSet) -> JWT:
+    try:
+        jwt = JWT.from_jose_token(unvalidated_token)
+        jwt.validate(jwk_set)
+    except JWException as e:
+        raise InvalidTokenError(f"Invalid token: {e}")
+    return jwt
+
+
 def validate_token(unvalidated_token: str, request: RequestBase) -> JWT:
     unvalidated_issuer = unvalidated_claim_from_token(unvalidated_token, "iss")
     jwk_set = fetch_jwks(unvalidated_issuer, request)
-    jwt = JWT.from_jose_token(unvalidated_token)
-    jwt.validate(jwk_set)
-    return jwt
+    return _make_and_validate_token(unvalidated_token, jwk_set)
 
 
 async def async_validate_token(unvalidated_token: str, request: AsyncRequestBase) -> JWT:
     unvalidated_issuer = unvalidated_claim_from_token(unvalidated_token, "iss")
     jwk_set = await async_fetch_jwks(unvalidated_issuer, request)
-    jwt = JWT.from_jose_token(unvalidated_token)
-    jwt.validate(jwk_set)
-    return jwt
+    return _make_and_validate_token(unvalidated_token, jwk_set)
