@@ -1,18 +1,21 @@
 import asyncio
-from typing import Optional
+import contextlib
+from typing import Mapping, Optional
 
 import requests
 from requests.exceptions import RequestException
+from requests_cache import CachedSession
 
-from ..exceptions import FetchError
+from ..exceptions import TransportError
+from . import AsyncRequestBase, RequestBase, Response
 
 
-class RequestSessionFetch:
+class RequestsSession(RequestBase):
     """
-    Fetch callable which fetches using a requests.Session.
+    HTTP transport based on a requests.Session object.
 
     Args:
-        session: requests.Session to use for fetching. If omitted a new session is created.
+        session: requests.Session to use for HTTP requests. If omitted a new session is created.
     """
 
     session: requests.Session
@@ -20,36 +23,45 @@ class RequestSessionFetch:
     def __init__(self, session: Optional[requests.Session] = None):
         self.session = session if session is not None else requests.Session()
 
-    def __call__(self, url: str) -> bytes:
+    def __call__(
+        self,
+        url: str,
+        body: Optional[bytes] = None,
+        method: Optional[str] = None,
+        headers: Optional[Mapping[str, str]] = None,
+    ) -> Response:
         try:
-            r = requests.get(url, headers={"Accept": "application/json"})
-            r.raise_for_status()
-            return r.content
+            r = self.session.get(url, headers={"Accept": "application/json"})
         except RequestException as e:
-            raise FetchError(f"Error fetching URL {url!r}: {e}")
+            raise TransportError(f"Error requesting URL {url!r}: {e}")
+        return Response(content=r.content, status_code=r.status_code, headers=r.headers)
 
 
-class AsyncRequestSessionFetch:
+class AsyncRequestsSession(AsyncRequestBase):
     """
-    Fetch callable which is an asyncio wrapper around RequestSessionFetch.
+    An asyncio wrapper around RequestsSession.
     """
 
-    _sync_fetch: RequestSessionFetch
+    _sync_request: RequestsSession
 
     def __init__(self, *args, **kwargs):
-        self._sync_fetch = RequestSessionFetch(*args, **kwargs)
+        self._sync_request = RequestsSession(*args, **kwargs)
 
-    async def __call__(self, url: str) -> bytes:
-        return await asyncio.to_thread(self._sync_fetch, url)
-
-
-def fetch(url: str) -> bytes:
-    "Fetch callable which uses a default requests session."
-    return RequestSessionFetch()(url)
+    async def __call__(self, *args, **kwargs) -> Response:
+        return await asyncio.to_thread(self._sync_request, *args, **kwargs)
 
 
-async def async_fetch(url: str) -> bytes:
-    """
-    Asynchronous fetch callable which uses a default requests session running in a separate thread.
-    """
-    return await AsyncRequestSessionFetch()(url)
+_cached_session = CachedSession(backend="memory")
+
+#: RequestsSession object which uses an in-memory cache.
+request = RequestsSession(_cached_session)
+
+#: AsyncRequestsSession object which uses an in-memory cache.
+async_request = AsyncRequestsSession(_cached_session)
+
+
+@contextlib.contextmanager
+def caching_disabled():
+    "Context manager which disables caching for the default request and async_request transports."
+    with _cached_session.cache_disabled():
+        yield

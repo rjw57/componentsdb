@@ -25,6 +25,11 @@ def rsa_jwk(rsa_jwk_kid) -> JWK:
 
 
 @pytest.fixture
+def jwks(ec_jwk, rsa_jwk) -> dict[str, JWK]:
+    return {"ES256": ec_jwk, "RS256": rsa_jwk}
+
+
+@pytest.fixture
 def jwk_set(ec_jwk, rsa_jwk) -> JWKSet:
     s = JWKSet()
     s["keys"].add(ec_jwk)

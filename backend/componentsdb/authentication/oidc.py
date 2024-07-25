@@ -1,6 +1,5 @@
 import json
-from collections.abc import Awaitable, Callable
-from typing import NewType, TypeAlias, cast
+from typing import Any, NewType, cast
 from urllib.parse import urlparse
 
 from jwcrypto.jwk import JWKSet
@@ -8,19 +7,17 @@ from jwcrypto.jwt import JWT
 from validators.url import url as validate_url
 
 from .exceptions import (
-    InvalidIssuer,
-    InvalidJWKSUrl,
-    InvalidOIDCDiscoveryDocument,
-    InvalidToken,
+    InvalidIssuerError,
+    InvalidJWKSUrlError,
+    InvalidOIDCDiscoveryDocumentError,
+    InvalidTokenError,
+    TransportError,
 )
-
-# These callables should raise FetchError if there is a problem fetching the URL or if the HTTP
-# status code indicates an error.
-FetchCallable: TypeAlias = Callable[[str], bytes]
-AsyncFetchCallable: TypeAlias = Callable[[str], Awaitable[bytes]]
+from .transport import AsyncRequestBase, RequestBase
 
 ValidatedIssuer = NewType("ValidatedIssuer", str)
 ValidatedJWKSUrl = NewType("ValidatedJWKSUrl", str)
+UnvalidatedClaims = NewType("UnvalidatedClaims", dict[str, Any])
 
 
 def validate_issuer(unvalidated_issuer: str) -> ValidatedIssuer:
@@ -37,9 +34,9 @@ def validate_issuer(unvalidated_issuer: str) -> ValidatedIssuer:
         InvalidIssuer: the issuer is not correctly formed.
     """
     if not validate_url(unvalidated_issuer):
-        raise InvalidIssuer("Issuer is not a valid URL.")
+        raise InvalidIssuerError("Issuer is not a valid URL.")
     if urlparse(unvalidated_issuer).scheme != "https":
-        raise InvalidIssuer("Issuer does not have a https scheme.")
+        raise InvalidIssuerError("Issuer does not have a https scheme.")
     return cast(ValidatedIssuer, unvalidated_issuer)
 
 
@@ -57,9 +54,9 @@ def validate_jwks_url(unvalidated_jwks_url: str) -> ValidatedJWKSUrl:
         InvalidJWKSUrl: the JWKS URL is not correctly formed.
     """
     if not validate_url(unvalidated_jwks_url):
-        raise InvalidJWKSUrl("JWKS URL is not a valid URL.")
+        raise InvalidJWKSUrlError("JWKS URL is not a valid URL.")
     if urlparse(unvalidated_jwks_url).scheme != "https":
-        raise InvalidJWKSUrl("JWKS URL does not have a https scheme.")
+        raise InvalidJWKSUrlError("JWKS URL does not have a https scheme.")
     return cast(ValidatedJWKSUrl, unvalidated_jwks_url)
 
 
@@ -74,14 +71,16 @@ def _jwks_url_from_oidc_discovery_document(
     try:
         oidc_discovery_doc = json.loads(oidc_discovery_doc_content)
     except json.JSONDecodeError as e:
-        raise InvalidOIDCDiscoveryDocument(f"Error decoding OIDC discovery document: {e}")
+        raise InvalidOIDCDiscoveryDocumentError(f"Error decoding OIDC discovery document: {e}")
 
     try:
         issuer = oidc_discovery_doc["issuer"]
     except KeyError:
-        raise InvalidOIDCDiscoveryDocument("'issuer' key not present in OIDC discovery document.")
+        raise InvalidOIDCDiscoveryDocumentError(
+            "'issuer' key not present in OIDC discovery document."
+        )
     if issuer != expected_issuer:
-        raise InvalidOIDCDiscoveryDocument(
+        raise InvalidOIDCDiscoveryDocumentError(
             f"Issuer {issuer!r} in OIDC discovery document does not "
             f"match expected issuer {expected_issuer!r}."
         )
@@ -89,34 +88,93 @@ def _jwks_url_from_oidc_discovery_document(
     try:
         jwks_url = validate_jwks_url(oidc_discovery_doc["jwks_url"])
     except KeyError:
-        raise InvalidOIDCDiscoveryDocument(
+        raise InvalidOIDCDiscoveryDocumentError(
             "'jwks_url' key not present in OIDC discovery document."
         )
     return jwks_url
 
 
-def fetch_jwks(unvalidated_issuer: str, fetch: FetchCallable) -> JWKSet:
+def _request_json(url: str, request: RequestBase) -> bytes:
+    """
+    Wrapper arround RequestBase which requests a JSON document and raises TransportError on an
+    error status code. The requested JSON document is not parsed.
+
+    Returns:
+        The response contents.
+    """
+    r = request(url, headers={"Accept": "application/json"})
+    if r.status_code >= 400:
+        raise TransportError(
+            f"Error status when requesting {url!r}: {r.status_code}",
+        )
+    return r.content
+
+
+async def _async_request_json(url: str, request: AsyncRequestBase) -> bytes:
+    """
+    Wrapper arround RequestBase which requests a JSON document and raises TransportError on an
+    error status code. The requested JSON document is not parsed.
+
+    Returns:
+        The response contents.
+    """
+    r = await request(url, headers={"Accept": "application/json"})
+    if r.status_code >= 400:
+        raise TransportError(
+            f"Error status when requesting {url!r}: {r.status_code}",
+        )
+    return r.content
+
+
+def fetch_jwks(unvalidated_issuer: str, request: RequestBase) -> JWKSet:
     "Fetch a JWK set from an unvalidated issuer."
-    oidc_discovery_doc = fetch(oidc_discovery_document_url(validate_issuer(unvalidated_issuer)))
-    print("xxx", oidc_discovery_doc)
-    jwks_url = _jwks_url_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
-    return JWKSet.from_json(fetch(jwks_url))
-
-
-async def async_fetch_jwks(unvalidated_issuer: str, fetch: AsyncFetchCallable) -> JWKSet:
-    "Fetch a JWK set from an unvalidated issuer using an asynchronous fetcher."
-    oidc_discovery_doc = await fetch(
-        oidc_discovery_document_url(validate_issuer(unvalidated_issuer))
+    oidc_discovery_doc = _request_json(
+        oidc_discovery_document_url(validate_issuer(unvalidated_issuer)), request
     )
     jwks_url = _jwks_url_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
-    return JWKSet.from_json(await fetch(jwks_url))
+    return JWKSet.from_json(_request_json(jwks_url, request))
 
 
-def unvalidated_issuer_from_token(unvalidated_token: str) -> str:
-    "Parse and extract an unvalidated issuer from an unvalidated token."
+async def async_fetch_jwks(unvalidated_issuer: str, request: AsyncRequestBase) -> JWKSet:
+    "Fetch a JWK set from an unvalidated issuer using an asynchronous fetcher."
+    oidc_discovery_doc = await _async_request_json(
+        oidc_discovery_document_url(validate_issuer(unvalidated_issuer)), request
+    )
+    jwks_url = _jwks_url_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
+    return JWKSet.from_json(await _async_request_json(jwks_url, request))
+
+
+def unvalidated_claims_from_token(unvalidated_token: str) -> UnvalidatedClaims:
+    "Parse and extract unverified claims from the token."
     try:
-        return json.loads(JWT.from_jose_token(unvalidated_token).token.objects["payload"])["iss"]
+        payload = json.loads(JWT.from_jose_token(unvalidated_token).token.objects["payload"])
     except json.JSONDecodeError:
-        raise InvalidToken("Could not decode token payload as JSON.")
+        raise InvalidTokenError("Could not decode token payload as JSON.")
+    if not isinstance(payload, dict):
+        raise InvalidTokenError("Token claims are not a dictionary.")
+    return cast(UnvalidatedClaims, payload)
+
+
+def unvalidated_claim_from_token(unvalidated_token: str, claim: str) -> str:
+    "Parse and extract an unvalidated claim from an unvalidated token."
+    claims = unvalidated_claims_from_token(unvalidated_token)
+    try:
+        return claims[claim]
     except KeyError:
-        raise InvalidToken("Issuer claim cannot be read from token.")
+        raise InvalidTokenError(f"Claim '{claim}' not present in token paylaod.")
+
+
+def validate_token(unvalidated_token: str, request: RequestBase) -> JWT:
+    unvalidated_issuer = unvalidated_claim_from_token(unvalidated_token, "iss")
+    jwk_set = fetch_jwks(unvalidated_issuer, request)
+    jwt = JWT.from_jose_token(unvalidated_token)
+    jwt.validate(jwk_set)
+    return jwt
+
+
+async def async_validate_token(unvalidated_token: str, request: AsyncRequestBase) -> JWT:
+    unvalidated_issuer = unvalidated_claim_from_token(unvalidated_token, "iss")
+    jwk_set = await async_fetch_jwks(unvalidated_issuer, request)
+    jwt = JWT.from_jose_token(unvalidated_token)
+    jwt.validate(jwk_set)
+    return jwt

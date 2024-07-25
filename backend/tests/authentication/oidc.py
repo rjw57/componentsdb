@@ -6,6 +6,15 @@ from jwcrypto.jwk import JWK
 from jwcrypto.jwt import JWT
 from responses import RequestsMock
 
+from componentsdb.authentication.transport.requests import caching_disabled
+
+
+@pytest.fixture(autouse=True)
+def disabled_request_cache():
+    "Disable HTTP request caching in tests."
+    with caching_disabled():
+        yield
+
 
 @pytest.fixture
 def jwt_issuer(faker: Faker, jwks_url: str, mocked_responses: RequestsMock) -> str:
@@ -35,11 +44,12 @@ def oidc_claims(jwt_issuer: str, oidc_subject: str, oidc_audience: str) -> dict[
     }
 
 
-@pytest.fixture
-def oidc_token(oidc_claims: dict[str, str], ec_jwk: JWK) -> str:
-    jwt = JWT(
-        header={"alg": "ES256", "kid": ec_jwk["kid"], "type": "JWT"},
-        claims=oidc_claims,
-    )
-    jwt.make_signed_token(ec_jwk)
+def make_jwt(claims: dict[str, str], key: JWK, alg: str) -> str:
+    jwt = JWT(header={"alg": alg, "kid": key["kid"], "type": "JWT"}, claims=claims)
+    jwt.make_signed_token(key)
     return jwt.serialize()
+
+
+@pytest.fixture(params=["ES256", "RS256"])
+def oidc_token(request, oidc_claims: dict[str, str], jwks: dict[str, JWK]) -> str:
+    return make_jwt(oidc_claims, jwks[request.param], request.param)

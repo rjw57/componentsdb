@@ -2,21 +2,25 @@ class AuthenticationError(RuntimeError):
     "Base class for all errors raised by the authentication module."
 
 
-class InvalidIssuer(AuthenticationError):
+class InvalidIssuerError(AuthenticationError):
     "The issuer claim in the JWT was not correctly formed."
 
 
-class InvalidJWKSUrl(AuthenticationError):
+class InvalidJWKSUrlError(AuthenticationError):
     "The JWKS URL in the OIDC discovery document was not correctly formed."
 
 
-class InvalidOIDCDiscoveryDocument(AuthenticationError):
+class InvalidOIDCDiscoveryDocumentError(AuthenticationError):
     "The OIDC discovery document was malformed."
 
 
-class InvalidToken(AuthenticationError):
+class InvalidTokenError(AuthenticationError):
     "The token was malformed or could not be validated against the issuer public key."
 
 
-class FetchError(AuthenticationError):
+class TransportError(AuthenticationError):
     "There was an error fetching a URL."
+
+
+class InvalidClaimsError(AuthenticationError):
+    "The claims in the token did not match policy."
