@@ -82,13 +82,14 @@ services:
     build:
       dockerfile_inline: |
         FROM python:3.12
+        WORKDIR /usr/src/app/
         RUN pip install poetry
-        COPY backend/poetry.lock backend/pyproject.toml /usr/src/backend/
-        WORKDIR /usr/src/backend
+        COPY poetry.lock pyproject.toml /usr/src/app/
         RUN poetry install
+      context: ./backend
     entrypoint: ["poetry", "run", "poe", "test"]
     volumes:
-      - ./:/usr/src
+      - ./backend:/usr/src/app
     environment:
       TESTING_DB_URL: postgresql+asyncpg://postgres:postgres-pass@db/test
     depends_on:
@@ -96,6 +97,36 @@ services:
         condition: service_healthy
 
   ########## LOCAL APP DEVELOPMENT ##########
+
+  backend-dev:
+    profiles:
+      - dev
+    build:
+      dockerfile_inline: |
+        FROM python:3.12
+        WORKDIR /usr/src/app/
+        RUN pip install poetry
+        COPY poetry.lock pyproject.toml /usr/src/app/
+        RUN poetry install
+        ENTRYPOINT ["poetry", "run", "fastapi"]
+        EXPOSE 8000
+      context: ./backend
+    command: ["dev", "--host", "0.0.0.0", "./componentsdb/app.py"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthy"]
+      interval: 30s
+      retries: 5
+      start_period: 120s
+      start_interval: 1s
+    ports:
+      - 8000:8000
+    volumes:
+      - ./backend:/usr/src/app:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
 
   frontend-dev:
     profiles:
@@ -110,10 +141,19 @@ services:
         ENTRYPOINT ["yarn"]
       context: ./frontend/
     command: ["start"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/"]
+      interval: 30s
+      retries: 5
+      start_period: 120s
+      start_interval: 1s
     ports:
       - 3000:3000
     volumes:
       - ./frontend/src:/usr/src/app/src:ro
+    depends_on:
+      backend-dev:
+        condition: service_healthy
 
 volumes:
   db-data:
