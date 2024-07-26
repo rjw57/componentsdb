@@ -10,7 +10,7 @@ from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.orm import DeclarativeBase, Mapped, backref, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(AsyncAttrs, DeclarativeBase):
@@ -45,6 +45,9 @@ class Cabinet(Base, ResourceMixin):
     __tablename__ = "cabinets"
 
     name: Mapped[str]
+    drawers: Mapped[list["Drawer"]] = relationship(
+        lazy="raise", cascade="all, delete-orphan", back_populates="cabinet"
+    )
 
 
 sa.Index("idx_cabinets_uuid", Cabinet.uuid)
@@ -57,8 +60,9 @@ class Drawer(Base, ResourceMixin):
     label: Mapped[str]
     cabinet_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("cabinets.id"))
 
-    cabinet: Mapped[Cabinet] = relationship(
-        backref=backref("drawers", cascade="all, delete-orphan"), lazy="raise"
+    cabinet: Mapped[Cabinet] = relationship(lazy="raise", back_populates="drawers")
+    collections: Mapped[list["Collection"]] = relationship(
+        lazy="raise", cascade="all, delete-orphan", back_populates="drawer"
     )
 
 
@@ -74,6 +78,10 @@ class Component(Base, ResourceMixin):
     description: Mapped[Optional[str]]
     datasheet_url: Mapped[Optional[str]]
 
+    collections: Mapped[list["Collection"]] = relationship(
+        cascade="all, delete-orphan", back_populates="component"
+    )
+
 
 sa.Index("idx_components_uuid", Component.uuid)
 
@@ -87,12 +95,8 @@ class Collection(Base, ResourceMixin):
     drawer_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("drawers.id"))
     component_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("components.id"))
 
-    drawer: Mapped[Drawer] = relationship(
-        backref=backref("collections", cascade="all, delete-orphan"), lazy="raise"
-    )
-    component: Mapped[Component] = relationship(
-        backref=backref("collections", cascade="all, delete-orphan"), lazy="raise"
-    )
+    drawer: Mapped[Drawer] = relationship(lazy="raise", back_populates="collections")
+    component: Mapped[Component] = relationship(lazy="raise", back_populates="collections")
 
 
 sa.Index("idx_collections_uuid", Collection.uuid)
