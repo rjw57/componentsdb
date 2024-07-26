@@ -17,6 +17,10 @@ An experimental database for storing electronics components.
     ```sh
     task up
     ```
+
+The application is available at http://localhost:3000/. The backend is available
+at http://localhost:8000/.
+
 ## Tasks
 
 Start application:

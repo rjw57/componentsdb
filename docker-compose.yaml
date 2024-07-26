@@ -95,5 +95,25 @@ services:
       db:
         condition: service_healthy
 
+  ########## LOCAL APP DEVELOPMENT ##########
+
+  frontend-dev:
+    profiles:
+      - dev
+    build:
+      dockerfile_inline: |
+        # syntax=docker/dockerfile:1.7-labs
+        FROM node:22
+        WORKDIR /usr/src/app
+        COPY --exclude=src . .
+        RUN yarn install
+        ENTRYPOINT ["yarn"]
+      context: ./frontend/
+    command: ["start"]
+    ports:
+      - 3000:3000
+    volumes:
+      - ./frontend/src:/usr/src/app/src:ro
+
 volumes:
   db-data:
