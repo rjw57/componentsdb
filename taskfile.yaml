@@ -11,11 +11,11 @@ tasks:
   up:
     desc: "start application"
     cmds:
-      - docker compose --profile=dev up --wait
+      - docker compose --profile=dev up --wait {{.CLI_ARGS}}
   up-prod:
     desc: "start application"
     cmds:
-      - docker compose --profile=prod up --wait
+      - docker compose --profile=prod up --wait {{.CLI_ARGS}}
   down:
     desc: "stop running containers"
     cmds:

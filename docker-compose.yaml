@@ -122,6 +122,8 @@ services:
       - 8000:8000
     volumes:
       - ./backend:/usr/src/app:ro
+    environment:
+      SQLALCHEMY_DB_URL: postgresql+asyncpg://components-user:components-pass@db/components
     depends_on:
       db:
         condition: service_healthy
