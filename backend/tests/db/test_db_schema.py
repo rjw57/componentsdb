@@ -6,7 +6,7 @@ from sqlalchemy.sql import text
 
 from componentsdb.db import fakes as f
 
-RESOURCE_TABLES = ["cabinets", "drawers", "collections", "components"]
+RESOURCE_TABLES = ["cabinets", "drawers", "collections", "components", "users"]
 
 
 @pytest_asyncio.fixture
@@ -17,6 +17,9 @@ async def fake_items(db_engine: AsyncEngine, faker: Faker):
         session.add(f.fake_drawer(faker))
         session.add(f.fake_component(faker))
         session.add(f.fake_collection(faker))
+        session.add(f.fake_user())
+        session.add(f.fake_access_token(faker))
+        session.add(f.fake_federated_user_credential(faker))
         await session.commit()
 
 
@@ -78,6 +81,11 @@ async def test_updated_at_updated(table: str, fake_items, faker: Faker, db_engin
                         """
                     ),
                     {"id": id, "code": faker.bs()},
+                )
+            case "users":
+                await conn.execute(
+                    text("UPDATE users SET id = :id WHERE id = :id"),
+                    {"id": id},
                 )
             case _:
                 raise NotImplementedError()

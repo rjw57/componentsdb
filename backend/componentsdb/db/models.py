@@ -102,3 +102,39 @@ class Collection(Base, ResourceMixin):
 sa.Index("idx_collections_uuid", Collection.uuid)
 sa.Index("idx_collections_drawer", Collection.drawer_id)
 sa.Index("idx_collections_component", Collection.component_id)
+
+
+@dataclass
+class User(Base, ResourceMixin):
+    __tablename__ = "users"
+
+    federated_credentials: Mapped[list["FederatedUserCredential"]] = relationship(
+        cascade="all, delete-orphan", back_populates="user"
+    )
+
+
+sa.Index("idx_users_uuid", User.uuid)
+
+
+@dataclass
+class AccessToken(Base, _TimestampsMixin):
+    __tablename__ = "access_tokens"
+
+    token: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
+    expires_at: Mapped[datetime.datetime] = mapped_column(sa.DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(lazy="raise")
+
+
+@dataclass
+class FederatedUserCredential(Base, _TimestampsMixin):
+    __tablename__ = "federated_user_credentials"
+    __table_args__ = (sa.PrimaryKeyConstraint("subject", "audience", "issuer"),)
+
+    subject: Mapped[str]
+    audience: Mapped[str]
+    issuer: Mapped[str]
+    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
+
+    user: Mapped[User] = relationship(lazy="raise", back_populates="federated_credentials")

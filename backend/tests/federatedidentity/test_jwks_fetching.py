@@ -4,8 +4,8 @@ import pytest
 from faker import Faker
 from jwcrypto.jwk import JWKSet
 
-from componentsdb.authentication import exceptions, oidc
-from componentsdb.authentication.transport.requests import async_request, request
+from componentsdb.federatedidentity import exceptions, oidc
+from componentsdb.federatedidentity.transport.requests import async_request, request
 
 
 def test_basic_case(jwt_issuer: str, jwk_set: JWKSet):

@@ -2,7 +2,7 @@ import requests
 from jwcrypto.jwk import JWKSet
 from jwcrypto.jwt import JWT
 
-from componentsdb.authentication import oidc
+from componentsdb.federatedidentity import oidc
 
 
 def test_jwt_issuer(jwt_issuer: str, jwks_uri: str):

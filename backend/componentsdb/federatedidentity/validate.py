@@ -6,7 +6,10 @@ from typing import Any, Mapping, Optional, TypeAlias
 import structlog
 
 from . import oidc
-from .policies import ExpectedUnverifiedAudiencePolicy, ExpectedUnverifiedIssuerPolicy
+from .policies import (
+    ExpectedUnverifiedAudienceAndIssuerPolicy,
+    ExpectedUnverifiedClaimsPresentPolicy,
+)
 from .transport import AsyncRequestBase, RequestBase, requests
 
 LOG = structlog.get_logger()
@@ -116,21 +119,11 @@ class ValidateToken:
         return validated_claims
 
 
-def _default_pre_validation_policies(
-    audiences: Collection[str],
-    issuers: Collection[str],
-):
-    return [
-        ExpectedUnverifiedAudiencePolicy(audiences),
-        ExpectedUnverifiedIssuerPolicy(issuers),
-    ]
-
-
 def validate_token(
     token: str,
     *,
-    audiences: Collection[str],
-    issuers: Collection[str],
+    allowed_audience_and_issuers: Collection[tuple[str, str]],
+    required_claims: Optional[Collection[str]] = None,
     request: Optional[RequestBase] = None,
 ):
     """
@@ -139,27 +132,36 @@ def validate_token(
 
     Args:
         token: incoming token to be validated
-        audience: expected audiences for the token
-        issuers: expected issuers for the token
+        allowed_audience_and_issuers: a collection of (audience, issuer) pairs which must be
+            present in the claims.
+        required_claims: a set of claim names which must be present.
 
     Raises:
         AuthenticationError: if the token cannot be validated.
     """
+    required_claims = required_claims if required_claims is not None else []
     return ValidateToken(
-        pre_validation_policies=_default_pre_validation_policies(audiences, issuers),
+        pre_validation_policies=[
+            ExpectedUnverifiedAudienceAndIssuerPolicy(allowed_audience_and_issuers),
+            ExpectedUnverifiedClaimsPresentPolicy(required_claims),
+        ]
     ).validate(token, request)
 
 
 async def async_validate_token(
     token: str,
     *,
-    audiences: Collection[str],
-    issuers: Collection[str],
+    allowed_audience_and_issuers: Collection[tuple[str, str]],
+    required_claims: Optional[Collection[str]] = None,
     request: Optional[AsyncRequestBase] = None,
 ):
     """
     Asynchronous variant of validate_token.
     """
+    required_claims = required_claims if required_claims is not None else []
     return await ValidateToken(
-        pre_validation_policies=_default_pre_validation_policies(audiences, issuers),
+        pre_validation_policies=[
+            ExpectedUnverifiedAudienceAndIssuerPolicy(allowed_audience_and_issuers),
+            ExpectedUnverifiedClaimsPresentPolicy(required_claims),
+        ]
     ).async_validate(token, request)

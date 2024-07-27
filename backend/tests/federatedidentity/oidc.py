@@ -6,7 +6,7 @@ from jwcrypto.jwk import JWK
 from jwcrypto.jwt import JWT
 from responses import RequestsMock
 
-from componentsdb.authentication.transport.requests import caching_disabled
+from componentsdb.federatedidentity.transport.requests import caching_disabled
 
 
 @pytest.fixture(autouse=True)

@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 
 from faker import Faker
@@ -31,4 +32,23 @@ def fake_collection(
         count=faker.random_int(0, 1000),
         component=component,
         drawer=drawer,
+    )
+
+
+def fake_user() -> m.User:
+    return m.User()
+
+
+def fake_access_token(faker: Faker, user: Optional[m.User] = None) -> m.AccessToken:
+    user = user if user is not None else fake_user()
+    return m.AccessToken(token=faker.slug(), user=user, expires_at=faker.date_time(datetime.UTC))
+
+
+def fake_federated_user_credential(faker: Faker, user: Optional[m.User] = None) -> m.AccessToken:
+    user = user if user is not None else fake_user()
+    return m.FederatedUserCredential(
+        subject=faker.user_name(),
+        audience=faker.url(schemes=["https"]),
+        issuer=faker.url(schemes=["https"]),
+        user=user,
     )

@@ -55,7 +55,8 @@ if _testing_db_url == "":
             raise RuntimeError("Timed out waiting for container to be healthy")
 
         host, port = postgres_container.get_addr("5432/tcp")
-        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{host}:{port}/pytest-db"
+        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{
+            host}:{port}/pytest-db"
         return url
 
 else:
@@ -139,5 +140,36 @@ async def collections(
 
 
 @pytest_asyncio.fixture
-async def all_fakes(collections, cabinets, drawers, components):
+async def users(db_session: AsyncSession):
+    users = [f.fake_user() for _ in range(50)]
+    db_session.add_all(users)
+    await db_session.flush()
+    return users
+
+
+@pytest_asyncio.fixture
+async def access_tokens(faker: Faker, db_session: AsyncSession, users: list[m.User]):
+    access_tokens = [
+        f.fake_access_token(faker, user=faker.random_element(users)) for _ in range(100)
+    ]
+    db_session.add_all(access_tokens)
+    await db_session.flush()
+    return users
+
+
+@pytest_asyncio.fixture
+async def federated_user_credentials(faker: Faker, db_session: AsyncSession, users: list[m.User]):
+    federated_user_credentials = [
+        f.fake_federated_user_credential(faker, user=faker.random_element(users))
+        for _ in range(50)
+    ]
+    db_session.add_all(federated_user_credentials)
+    await db_session.flush()
+    return federated_user_credentials
+
+
+@pytest_asyncio.fixture
+async def all_fakes(
+    collections, cabinets, drawers, components, users, access_tokens, federated_user_credentials
+):
     pass
