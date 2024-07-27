@@ -17,9 +17,9 @@ def disabled_request_cache():
 
 
 @pytest.fixture
-def jwt_issuer(faker: Faker, jwks_url: str, mocked_responses: RequestsMock) -> str:
+def jwt_issuer(faker: Faker, jwks_uri: str, mocked_responses: RequestsMock) -> str:
     issuer_url = faker.url(schemes=["https"]).rstrip("/")
-    discovery_doc = json.dumps({"jwks_url": jwks_url, "issuer": issuer_url}).encode("utf8")
+    discovery_doc = json.dumps({"jwks_uri": jwks_uri, "issuer": issuer_url}).encode("utf8")
     discovery_doc_url = f"{issuer_url}/.well-known/openid-configuration"
     mocked_responses.get(discovery_doc_url, body=discovery_doc, content_type="application/json")
     return issuer_url

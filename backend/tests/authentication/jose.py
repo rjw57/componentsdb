@@ -38,7 +38,7 @@ def jwk_set(ec_jwk, rsa_jwk) -> JWKSet:
 
 
 @pytest.fixture
-def jwks_url(faker: Faker, jwk_set: JWKSet, mocked_responses: responses.RequestsMock) -> str:
+def jwks_uri(faker: Faker, jwk_set: JWKSet, mocked_responses: responses.RequestsMock) -> str:
     url = faker.url(schemes=["https"])
     mocked_responses.get(
         url, body=jwk_set.export(private_keys=False), content_type="application/json"

@@ -19,7 +19,7 @@ async def test_basic_case_async(jwt_issuer: str, jwk_set: JWKSet):
     assert fetched_jwk_set == jwk_set
 
 
-@pytest.mark.parametrize("field", ["jwks_url", "issuer"])
+@pytest.mark.parametrize("field", ["jwks_uri", "issuer"])
 def test_missing_field_in_discovery_doc(field: str, jwt_issuer: str, mocked_responses):
     doc_url = oidc.oidc_discovery_document_url(oidc.validate_issuer(jwt_issuer))
     doc = json.loads(request(doc_url).content)
@@ -79,10 +79,10 @@ def test_issuer_not_https(faker: Faker):
     assert str(e.value) == "Issuer does not have a https scheme."
 
 
-def test_jwks_url_not_url(jwt_issuer: str, mocked_responses):
+def test_jwks_uri_not_url(jwt_issuer: str, mocked_responses):
     doc_url = oidc.oidc_discovery_document_url(oidc.validate_issuer(jwt_issuer))
     doc = json.loads(request(doc_url).content)
-    doc["jwks_url"] = "not a /url"
+    doc["jwks_uri"] = "not a /url"
     mocked_responses.remove("GET", doc_url)
     mocked_responses.get(doc_url, body=json.dumps(doc), content_type="application/json")
     with pytest.raises(exceptions.InvalidJWKSUrlError) as e:
@@ -90,10 +90,10 @@ def test_jwks_url_not_url(jwt_issuer: str, mocked_responses):
     assert str(e.value) == "JWKS URL is not a valid URL."
 
 
-def test_jwks_url_not_https(faker: Faker, jwt_issuer: str, mocked_responses):
+def test_jwks_uri_not_https(faker: Faker, jwt_issuer: str, mocked_responses):
     doc_url = oidc.oidc_discovery_document_url(oidc.validate_issuer(jwt_issuer))
     doc = json.loads(request(doc_url).content)
-    doc["jwks_url"] = faker.url(schemes=["http"])
+    doc["jwks_uri"] = faker.url(schemes=["http"])
     mocked_responses.remove("GET", doc_url)
     mocked_responses.get(doc_url, body=json.dumps(doc), content_type="application/json")
     with pytest.raises(exceptions.InvalidJWKSUrlError) as e:

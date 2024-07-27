@@ -41,12 +41,12 @@ def validate_issuer(unvalidated_issuer: str) -> ValidatedIssuer:
     return cast(ValidatedIssuer, unvalidated_issuer)
 
 
-def validate_jwks_url(unvalidated_jwks_url: str) -> ValidatedJWKSUrl:
+def validate_jwks_uri(unvalidated_jwks_uri: str) -> ValidatedJWKSUrl:
     """
     Validate JWKS URL is correctly formed.
 
     Args:
-        unvalidated_jwks_url: URL which needs validating.
+        unvalidated_jwks_uri: URL which needs validating.
 
     Returns:
         The url if it is validated.
@@ -54,11 +54,11 @@ def validate_jwks_url(unvalidated_jwks_url: str) -> ValidatedJWKSUrl:
     Raises:
         InvalidJWKSUrl: the JWKS URL is not correctly formed.
     """
-    if not validate_url(unvalidated_jwks_url):
+    if not validate_url(unvalidated_jwks_uri):
         raise InvalidJWKSUrlError("JWKS URL is not a valid URL.")
-    if urlparse(unvalidated_jwks_url).scheme != "https":
+    if urlparse(unvalidated_jwks_uri).scheme != "https":
         raise InvalidJWKSUrlError("JWKS URL does not have a https scheme.")
-    return cast(ValidatedJWKSUrl, unvalidated_jwks_url)
+    return cast(ValidatedJWKSUrl, unvalidated_jwks_uri)
 
 
 def oidc_discovery_document_url(issuer: ValidatedIssuer) -> str:
@@ -66,7 +66,7 @@ def oidc_discovery_document_url(issuer: ValidatedIssuer) -> str:
     return "".join([issuer.rstrip("/"), "/.well-known/openid-configuration"])
 
 
-def _jwks_url_from_oidc_discovery_document(
+def _jwks_uri_from_oidc_discovery_document(
     expected_issuer: str, oidc_discovery_doc_content: bytes
 ) -> ValidatedJWKSUrl:
     try:
@@ -87,12 +87,12 @@ def _jwks_url_from_oidc_discovery_document(
         )
 
     try:
-        jwks_url = validate_jwks_url(oidc_discovery_doc["jwks_url"])
+        jwks_uri = validate_jwks_uri(oidc_discovery_doc["jwks_uri"])
     except KeyError:
         raise InvalidOIDCDiscoveryDocumentError(
-            "'jwks_url' key not present in OIDC discovery document."
+            "'jwks_uri' key not present in OIDC discovery document."
         )
-    return jwks_url
+    return jwks_uri
 
 
 def _request_json(url: str, request: RequestBase) -> bytes:
@@ -132,8 +132,8 @@ def fetch_jwks(unvalidated_issuer: str, request: RequestBase) -> JWKSet:
     oidc_discovery_doc = _request_json(
         oidc_discovery_document_url(validate_issuer(unvalidated_issuer)), request
     )
-    jwks_url = _jwks_url_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
-    return JWKSet.from_json(_request_json(jwks_url, request))
+    jwks_uri = _jwks_uri_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
+    return JWKSet.from_json(_request_json(jwks_uri, request))
 
 
 async def async_fetch_jwks(unvalidated_issuer: str, request: AsyncRequestBase) -> JWKSet:
@@ -141,8 +141,8 @@ async def async_fetch_jwks(unvalidated_issuer: str, request: AsyncRequestBase) -
     oidc_discovery_doc = await _async_request_json(
         oidc_discovery_document_url(validate_issuer(unvalidated_issuer)), request
     )
-    jwks_url = _jwks_url_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
-    return JWKSet.from_json(await _async_request_json(jwks_url, request))
+    jwks_uri = _jwks_uri_from_oidc_discovery_document(unvalidated_issuer, oidc_discovery_doc)
+    return JWKSet.from_json(await _async_request_json(jwks_uri, request))
 
 
 def unvalidated_claims_from_token(unvalidated_token: str) -> UnvalidatedClaims:

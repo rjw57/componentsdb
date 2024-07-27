@@ -55,13 +55,16 @@ class ValidateToken:
             post_validation_policies if post_validation_policies is not None else []
         )
 
-    def validate(self, token: str, request: Optional[RequestBase] = None):
+    def validate(self, token: str, request: Optional[RequestBase] = None) -> Mapping[str, Any]:
         """
         Validate the token.
 
         Args:
             token: the token to validate.
             request: HTTP transport to use. Defaults to a caching requests-based transport.
+
+        Returns:
+            A dictionary of claims present in the token.
 
         Raises:
             AuthenticationError: if token failed validation.
@@ -78,14 +81,20 @@ class ValidateToken:
         for p in self.post_validation_policies:
             if isawaitable(p(validated_claims)):
                 raise RuntimeError("Validation policy includes asynchronous callable.")
+        return validated_claims
 
-    async def async_validate(self, token: str, request: Optional[AsyncRequestBase] = None):
+    async def async_validate(
+        self, token: str, request: Optional[AsyncRequestBase] = None
+    ) -> Mapping[str, Any]:
         """
         Validate the token asynchronously.
 
         Args:
             token: the token to validate.
             request: HTTP transport to use. Defaults to a caching requests-based transport.
+
+        Returns:
+            A dictionary of claims present in the token.
 
         Raises:
             AuthenticationError: if token failed validation.
@@ -104,6 +113,7 @@ class ValidateToken:
             r = p(validated_claims)
             if isawaitable(r):
                 await r
+        return validated_claims
 
 
 def _default_pre_validation_policies(

@@ -5,10 +5,10 @@ from jwcrypto.jwt import JWT
 from componentsdb.authentication import oidc
 
 
-def test_jwt_issuer(jwt_issuer: str, jwks_url: str):
+def test_jwt_issuer(jwt_issuer: str, jwks_uri: str):
     r = requests.get("".join([jwt_issuer.rstrip("/"), "/.well-known/openid-configuration"]))
     r.raise_for_status()
-    assert r.json()["jwks_url"] == jwks_url
+    assert r.json()["jwks_uri"] == jwks_uri
 
 
 def test_oidc_token(oidc_token: str, jwk_set: JWKSet, jwt_issuer: str):
