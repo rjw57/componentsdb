@@ -167,8 +167,8 @@ def unvalidated_claim_from_token(unvalidated_token: str, claim: str) -> str:
 
 def _make_and_validate_token(unvalidated_token: str, jwk_set: JWKSet) -> JWT:
     try:
-        jwt = JWT.from_jose_token(unvalidated_token)
-        jwt.validate(jwk_set)
+        jwt = JWT(algs=["RS256", "ES256"], expected_type="JWS")
+        jwt.deserialize(unvalidated_token, jwk_set)
     except JWException as e:
         raise InvalidTokenError(f"Invalid token: {e}")
     return jwt

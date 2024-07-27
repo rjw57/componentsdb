@@ -65,7 +65,7 @@ class AuthRouter(APIRouter):
                 claims = await async_validate_token(
                     form_data.assertion,
                     allowed_audience_and_issuers=settings.federated_id_token_audience_issuer_pairs,
-                    required_claims=["aud", "iss", "sub"],
+                    required_claims=["aud", "iss", "sub", "exp"],
                 )
             except Exception:
                 LOG.exception("Error validating token")

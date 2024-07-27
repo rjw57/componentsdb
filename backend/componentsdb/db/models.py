@@ -138,3 +138,6 @@ class FederatedUserCredential(Base, _TimestampsMixin):
     user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
 
     user: Mapped[User] = relationship(lazy="raise", back_populates="federated_credentials")
+
+
+sa.Index("idx_federated_user_credentials_user", FederatedUserCredential.user_id)
