@@ -42,3 +42,9 @@ class DbContext:
     @cached_property
     def component_collection_connection(self) -> loaders.ComponentCollectionConnectionFactory:
         return loaders.ComponentCollectionConnectionFactory(self.db_session)
+
+
+def make_context(session: AsyncSession):
+    return {
+        "db": DbContext(session),
+    }

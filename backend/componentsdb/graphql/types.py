@@ -1,16 +1,18 @@
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import strawberry
 from strawberry.field_extensions import InputMutationExtension
 
 from ..db import models as dbm
-from .context import DbContext
 from .pagination import Connection, Node, PaginationParams
 
+if TYPE_CHECKING:
+    from .context import DbContext
 
-def _db(context: dict[str, Any]) -> DbContext:
+
+def get_db(context: dict[str, Any]) -> "DbContext":
     db = context.get("db")
-    if db is None or not isinstance(db, DbContext):
+    if db is None:
         raise ValueError("context has no DbContext instance available via the 'db' key")
     return db
 
@@ -24,7 +26,7 @@ class Cabinet(Node):
     def drawers(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
     ) -> "Connection[Drawer]":
-        return _db(info.context).cabinet_drawer_connection.make_connection(
+        return get_db(info.context).cabinet_drawer_connection.make_connection(
             self.db_resource.id, PaginationParams(after=after, first=first)
         )
 
@@ -38,13 +40,13 @@ class Drawer(Node):
     def collections(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
     ) -> "Connection[Collection]":
-        return _db(info.context).drawer_collection_connection.make_connection(
+        return get_db(info.context).drawer_collection_connection.make_connection(
             self.db_resource.id, PaginationParams(after=after, first=first)
         )
 
     @strawberry.field
     async def cabinet(self, info: strawberry.Info) -> Cabinet:
-        return await _db(info.context).related_cabinet.load(self.db_resource.cabinet_id)
+        return await get_db(info.context).related_cabinet.load(self.db_resource.cabinet_id)
 
 
 @strawberry.type
@@ -54,11 +56,11 @@ class Collection(Node):
 
     @strawberry.field
     async def component(self, info: strawberry.Info) -> "Component":
-        return await _db(info.context).related_component.load(self.db_resource.component_id)
+        return await get_db(info.context).related_component.load(self.db_resource.component_id)
 
     @strawberry.field
     async def drawer(self, info: strawberry.Info) -> "Drawer":
-        return await _db(info.context).related_drawer.load(self.db_resource.drawer_id)
+        return await get_db(info.context).related_drawer.load(self.db_resource.drawer_id)
 
 
 @strawberry.type
@@ -72,7 +74,7 @@ class Component(Node):
     def collections(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
     ) -> "Connection[Collection]":
-        return _db(info.context).component_collection_connection.make_connection(
+        return get_db(info.context).component_collection_connection.make_connection(
             self.db_resource.id, PaginationParams(after=after, first=first)
         )
 
@@ -113,13 +115,13 @@ class Query:
     def cabinets(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
     ) -> Connection[Cabinet]:
-        return _db(info.context).cabinet_connection.make_connection(
+        return get_db(info.context).cabinet_connection.make_connection(
             None, PaginationParams(after=after, first=first)
         )
 
     @strawberry.field
     async def cabinet(self, info: strawberry.Info, id: strawberry.ID) -> Optional[Cabinet]:
-        return await _db(info.context).cabinet.load(id)
+        return await get_db(info.context).cabinet.load(id)
 
 
 @strawberry.type
