@@ -134,10 +134,29 @@ class AccessToken(Base, _TimestampsMixin):
     user: Mapped[User] = relationship(lazy="raise")
 
 
+sa.Index("idx_access_tokens_expires_at", AccessToken.expires_at)
+
+
 @dataclass
-class FederatedUserCredential(Base, _TimestampsMixin):
+class RefreshToken(Base, _TimestampsMixin):
+    __tablename__ = "refresh_tokens"
+
+    token: Mapped[str] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
+    expires_at: Mapped[datetime.datetime] = mapped_column(sa.DateTime(timezone=True))
+    used_at: Mapped[Optional[datetime.datetime]] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped[User] = relationship(lazy="raise")
+
+
+sa.Index("idx_refresh_tokens_expires_at", RefreshToken.expires_at)
+
+
+@dataclass
+class FederatedUserCredential(Base, ResourceMixin):
     __tablename__ = "federated_user_credentials"
-    __table_args__ = (sa.PrimaryKeyConstraint("subject", "audience", "issuer"),)
 
     subject: Mapped[str]
     audience: Mapped[str]
@@ -151,3 +170,10 @@ class FederatedUserCredential(Base, _TimestampsMixin):
 
 
 sa.Index("idx_federated_user_credentials_user", FederatedUserCredential.user_id)
+sa.Index(
+    "idx_federated_user_credentials_subject_audience_issuer",
+    FederatedUserCredential.subject,
+    FederatedUserCredential.audience,
+    FederatedUserCredential.issuer,
+    unique=True,
+)

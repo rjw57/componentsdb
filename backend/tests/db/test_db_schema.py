@@ -6,7 +6,14 @@ from sqlalchemy.sql import text
 
 from componentsdb.db import fakes as f
 
-RESOURCE_TABLES = ["cabinets", "drawers", "collections", "components", "users"]
+RESOURCE_TABLES = [
+    "cabinets",
+    "drawers",
+    "collections",
+    "components",
+    "users",
+    "federated_user_credentials",
+]
 
 
 @pytest_asyncio.fixture
@@ -39,7 +46,10 @@ async def test_resource_at_fields_default(table: str, db_engine: AsyncEngine, fa
     async with db_engine.connect() as conn:
         created_at, updated_at = (
             await conn.execute(
-                text(f"SELECT created_at, updated_at FROM {table} ORDER BY id ASC LIMIT 1")
+                text(
+                    f"SELECT created_at, updated_at FROM {
+                        table} ORDER BY id ASC LIMIT 1"
+                )
             )
         ).one()
         assert created_at is not None
@@ -87,6 +97,18 @@ async def test_updated_at_updated(table: str, fake_items, faker: Faker, db_engin
                     text("UPDATE users SET id = :id WHERE id = :id"),
                     {"id": id},
                 )
+            case "federated_user_credentials":
+                await conn.execute(
+                    text(
+                        """
+                        UPDATE federated_user_credentials
+                        SET
+                            most_recent_claims = :claims
+                        WHERE id = :id
+                        """
+                    ),
+                    {"id": id, "claims": '{"foo": 1}'},
+                )
             case _:
                 raise NotImplementedError()
         await conn.commit()
@@ -94,7 +116,10 @@ async def test_updated_at_updated(table: str, fake_items, faker: Faker, db_engin
     async with db_engine.connect() as conn:
         created_at, updated_at = (
             await conn.execute(
-                text(f"SELECT created_at, updated_at FROM {table} WHERE id = :id"),
+                text(
+                    f"SELECT created_at, updated_at FROM {
+                        table} WHERE id = :id"
+                ),
                 {"id": id},
             )
         ).one()

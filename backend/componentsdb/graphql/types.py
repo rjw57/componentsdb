@@ -1,6 +1,7 @@
 from typing import Optional
 
 import strawberry
+from strawberry.field_extensions import InputMutationExtension
 
 from ..db import models as dbm
 from .pagination import Connection, Node, PaginationParams
@@ -73,7 +74,37 @@ class Component(Node):
 
 
 @strawberry.type
+class User(Node):
+    db_resource: strawberry.Private[dbm.User]
+    email: Optional[str]
+    display_name: str
+    avatar_url: Optional[str]
+
+
+@strawberry.type
+class Credentials:
+    access_token: str
+    refresh_token: str
+    expires_in: int
+
+
+@strawberry.type
+class AuthQueries:
+    @strawberry.field
+    def federated_identity_providers(self) -> list[str]:
+        raise NotImplementedError()
+
+    @strawberry.field
+    def me(self) -> Optional[User]:
+        raise NotImplementedError()
+
+
+@strawberry.type
 class Query:
+    @strawberry.field
+    def auth(self) -> AuthQueries:
+        return AuthQueries()
+
     @strawberry.field
     def cabinets(
         self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
@@ -85,3 +116,29 @@ class Query:
     @strawberry.field
     async def cabinet(self, info: strawberry.Info, id: strawberry.ID) -> Optional[Cabinet]:
         return await info.context["db_loaders"]["cabinet"].load(id)
+
+
+@strawberry.type
+class AuthMutations:
+    @strawberry.mutation(extensions=[InputMutationExtension()])
+    def signUpWithFederatedIdentity(
+        self, info: strawberry.Info, provider: str, id_token: str
+    ) -> User:
+        raise NotImplementedError()
+
+    @strawberry.mutation(extensions=[InputMutationExtension()])
+    def signInWithFederatedIdentity(
+        self, info: strawberry.Info, provider: str, id_token: str
+    ) -> Credentials:
+        raise NotImplementedError()
+
+    @strawberry.mutation(extensions=[InputMutationExtension()])
+    def refreshCredentials(self, info: strawberry.Info, refresh_token: str) -> Credentials:
+        raise NotImplementedError()
+
+
+@strawberry.type
+class Mutation:
+    @strawberry.field
+    def auth(self) -> AuthMutations:
+        return AuthMutations()

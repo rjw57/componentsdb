@@ -2,9 +2,9 @@ import strawberry
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import loaders
-from .types import Query
+from .types import Mutation, Query
 
-schema = strawberry.Schema(query=Query)
+schema = strawberry.Schema(query=Query, mutation=Mutation)
 
 
 def context_from_db_session(session: AsyncSession):
