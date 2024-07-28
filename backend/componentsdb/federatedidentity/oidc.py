@@ -244,6 +244,7 @@ class OIDCTokenIssuer(_BaseOIDCTokenIssuer, BaseProvider):
     def prepare(self, request: Optional[RequestBase] = None) -> None:
         """
         Prepare this issuer for token verification, fetching the issuer's public key if necessary.
+        The public key is only fetched once so it is safe to call this method repeatedly.
 
         Args:
             request: HTTP transport to use to fetch the issuer public key set. Defaults to a
@@ -253,6 +254,8 @@ class OIDCTokenIssuer(_BaseOIDCTokenIssuer, BaseProvider):
             FederatedIdentityError: if the issuer, OIDC discovery document or JWKS is invalid or
                 some transport error ocurred.
         """
+        if self._key_set is not None:
+            return
         request = request if request is not None else requests_transport.request
         self._key_set = fetch_jwks(self.issuer, request)
 
@@ -267,6 +270,7 @@ class AsyncOIDCTokenIssuer(_BaseOIDCTokenIssuer, AsyncBaseProvider):
     async def prepare(self, request: Optional[AsyncRequestBase] = None) -> None:
         """
         Prepare this issuer for token verification, fetching the issuer's public key if necessary.
+        The public key is only fetched once so it is safe to call this method repeatedly.
 
         Args:
             request: Asynchronous HTTP transport to use to fetch the issuer public key set.
@@ -277,5 +281,7 @@ class AsyncOIDCTokenIssuer(_BaseOIDCTokenIssuer, AsyncBaseProvider):
             FederatedIdentityError: if the issuer, OIDC discovery document or JWKS is invalid or
                 some transport error ocurred.
         """
+        if self._key_set is not None:
+            return
         request = request if request is not None else requests_transport.async_request
         self._key_set = await async_fetch_jwks(self.issuer, request)

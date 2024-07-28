@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Annotated, Literal, Optional
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
 from pydantic import BaseModel, Field
@@ -8,7 +8,9 @@ from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from strawberry.fastapi import GraphQLRouter
 
-from .auth import AuthenticationProvider, FederatedIdentityProvider
+from .auth import AuthenticationProvider, AuthError, FederatedIdentityProvider
+from .db.models import User
+from .federatedidentity import FederatedIdentityError
 from .graphql import make_context, schema
 
 
@@ -48,11 +50,31 @@ def get_auth_provider(
     )
 
 
+async def get_authenticated_user(
+    auth_provider: AuthenticationProvider = Depends(get_auth_provider),
+    authorization: Annotated[Optional[str], Header()] = None,
+) -> Optional[User]:
+    if authorization is None:
+        return None
+    if not authorization.lower().startswith("bearer "):
+        raise HTTPException(403, detail="bearer token required")
+    access_token = authorization.split(" ")[1]
+    try:
+        return await auth_provider.authenticate_user_from_access_token(access_token)
+    except (AuthError, FederatedIdentityError) as e:
+        raise HTTPException(403, detail=str(e))
+
+
 async def get_graphql_context(
     session: AsyncSession = Depends(get_db_session),
     auth_provider: AuthenticationProvider = Depends(get_auth_provider),
+    authenticated_user: Optional[User] = Depends(get_authenticated_user),
 ):
-    return make_context(db_session=session, authentication_provider=auth_provider)
+    return make_context(
+        db_session=session,
+        authentication_provider=auth_provider,
+        authenticated_user=authenticated_user,
+    )
 
 
 graphql_app: APIRouter = GraphQLRouter(

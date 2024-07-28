@@ -3,6 +3,7 @@ from typing import Any, Optional
 import strawberry
 from strawberry.field_extensions import InputMutationExtension
 
+from ..auth import AuthenticationProvider
 from ..db import models as dbm
 from . import context
 from .pagination import Connection, Node, PaginationParams
@@ -13,6 +14,23 @@ def _db(context_: dict[str, Any]) -> "context.DbContext":
     if db is None or not isinstance(db, context.DbContext):
         raise ValueError("context has no DbContext instance available via the 'db' key")
     return db
+
+
+def _auth_provider(context_: dict[str, Any]) -> AuthenticationProvider:
+    auth_provider = context_.get("authentication_provider")
+    if auth_provider is None or not isinstance(auth_provider, AuthenticationProvider):
+        raise ValueError(
+            "context has no AuthenticationProvider instance available via the "
+            "'authentication_provider' key"
+        )
+    return auth_provider
+
+
+def _authenticated_user(context_: dict[str, Any]) -> Optional[dbm.User]:
+    user = context_.get("authenticated_user")
+    if user is not None and not isinstance(user, dbm.User):
+        raise ValueError("authenticated user in context is not a database User model")
+    return user
 
 
 @strawberry.type
@@ -93,14 +111,35 @@ class Credentials:
 
 
 @strawberry.type
+class FederatedIdentityProvider:
+    name: str
+    audience: str
+    issuer: str
+
+
+@strawberry.type
 class AuthQueries:
     @strawberry.field
-    def federated_identity_providers(self) -> list[str]:
-        raise NotImplementedError()
+    def federated_identity_providers(
+        self, info: strawberry.Info
+    ) -> list[FederatedIdentityProvider]:
+        return [
+            FederatedIdentityProvider(name=k, audience=v.audience, issuer=v.issuer)
+            for k, v in _auth_provider(info.context).federated_identity_providers.items()
+        ]
 
     @strawberry.field
-    def me(self) -> Optional[User]:
-        raise NotImplementedError()
+    def authenticated_user(self, info: strawberry.Info) -> Optional[User]:
+        user = _authenticated_user(info.context)
+        if user is None:
+            return None
+        return User(
+            db_resource=user,
+            id=user.uuid,
+            email=user.email,
+            display_name=user.display_name,
+            avatar_url=user.avatar_url,
+        )
 
 
 @strawberry.type
@@ -125,14 +164,14 @@ class Query:
 @strawberry.type
 class AuthMutations:
     @strawberry.mutation(extensions=[InputMutationExtension()])
-    def sign_up_with_federated_identity(
-        self, info: strawberry.Info, provider: str, id_token: str
+    def sign_up_with_federated_credential(
+        self, info: strawberry.Info, provider: str, credential: str
     ) -> User:
         raise NotImplementedError()
 
     @strawberry.mutation(extensions=[InputMutationExtension()])
-    def sign_in_with_federated_identity(
-        self, info: strawberry.Info, provider: str, id_token: str
+    def credentials_from_federated_credential(
+        self, info: strawberry.Info, provider: str, credential: str
     ) -> Credentials:
         raise NotImplementedError()
 

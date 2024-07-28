@@ -1,8 +1,10 @@
 from functools import cached_property
+from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import AuthenticationProvider
+from ..db import models as dbm
 from . import loaders
 
 
@@ -45,8 +47,13 @@ class DbContext:
         return loaders.ComponentCollectionConnectionFactory(self.db_session)
 
 
-def make_context(db_session: AsyncSession, authentication_provider: AuthenticationProvider):
+def make_context(
+    db_session: AsyncSession,
+    authentication_provider: AuthenticationProvider,
+    authenticated_user: Optional[dbm.User],
+):
     return {
         "db": DbContext(db_session),
-        "auth": authentication_provider,
+        "authentication_provider": authentication_provider,
+        "authenticated_user": authenticated_user,
     }
