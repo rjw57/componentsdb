@@ -11,7 +11,7 @@ from componentsdb.federatedidentity import AsyncOIDCTokenIssuer, OIDCTokenIssuer
 from componentsdb.federatedidentity import exceptions as exc
 from componentsdb.federatedidentity import oidc
 
-from .oidc import make_jwt
+from ..oidcfixtures import make_jwt
 
 
 def test_oidc_token_issuer(oidc_token: str, jwt_issuer: str):

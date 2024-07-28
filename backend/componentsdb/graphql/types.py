@@ -125,19 +125,19 @@ class Query:
 @strawberry.type
 class AuthMutations:
     @strawberry.mutation(extensions=[InputMutationExtension()])
-    def signUpWithFederatedIdentity(
+    def sign_up_with_federated_identity(
         self, info: strawberry.Info, provider: str, id_token: str
     ) -> User:
         raise NotImplementedError()
 
     @strawberry.mutation(extensions=[InputMutationExtension()])
-    def signInWithFederatedIdentity(
+    def sign_in_with_federated_identity(
         self, info: strawberry.Info, provider: str, id_token: str
     ) -> Credentials:
         raise NotImplementedError()
 
     @strawberry.mutation(extensions=[InputMutationExtension()])
-    def refreshCredentials(self, info: strawberry.Info, refresh_token: str) -> Credentials:
+    def refresh_credentials(self, info: strawberry.Info, refresh_token: str) -> Credentials:
         raise NotImplementedError()
 
 

@@ -1,31 +1,158 @@
+import dataclasses
 import secrets
 from collections.abc import Mapping
 from datetime import timedelta
 from typing import Any, Optional
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import bindparam
 
-from .db.models import AccessToken, FederatedUserCredential, User
+from .db.models import AccessToken, FederatedUserCredential, RefreshToken, User
 
 
-class FederatedIdentityProvider(BaseModel):
+@dataclasses.dataclass
+class FederatedIdentityProvider:
     issuer: str
     audience: str
 
 
-class AuthSettings(BaseSettings):
-    token_lifetime: int = 3600
-    federated_identity_providers: dict[str, FederatedIdentityProvider] = Field(
-        default_factory=dict
-    )
+class AuthError(RuntimeError):
+    "Base class for all authentication errors"
 
 
-class NoSuchUser(RuntimeError):
+class InvalidAccessTokenError(AuthError):
+    "Provided access token could not be validated"
+
+
+class InvalidRefreshTokenError(AuthError):
+    "Provided refresh token could not be validated"
+
+
+class UserAlreadySignedUp(AuthError):
+    "The requested user has already signed up"
+
+
+class InvalidProvider(AuthError):
+    "The requested federated identity provider does not exist."
+
+
+class NoSuchUser(AuthError):
     "No user matching the credentials could be found."
+
+
+class AuthenticationProvider:
+    DEFAULT_ACCESS_TOKEN_LIFETIME = 3600  # 1 hr
+    DEFAULT_REFRESH_TOKEN_LIFETIME = 7 * 24 * 60 * 3600  # 1 wk
+
+    db_session: AsyncSession
+    federated_identity_providers: Mapping[str, FederatedIdentityProvider]
+    access_token_lifetime: int
+    refresh_token_lifetime: int
+
+    def __init__(
+        self,
+        db_session: AsyncSession,
+        federated_identity_providers: Optional[Mapping[str, FederatedIdentityProvider]] = None,
+        access_token_lifetime: int = DEFAULT_ACCESS_TOKEN_LIFETIME,
+        refresh_token_lifetime: int = DEFAULT_REFRESH_TOKEN_LIFETIME,
+    ):
+        self.db_session = db_session
+        self.federated_identity_providers = (
+            federated_identity_providers if federated_identity_providers is not None else dict()
+        )
+        self.access_token_lifetime = access_token_lifetime
+        self.refresh_token_lifetime = refresh_token_lifetime
+
+    async def create_user_with_federated_identity(self, provider: str, id_token: str) -> User:
+        """
+        Sign up a new user based on a federated id token.
+
+        Args:
+            provider: federated identity provider to use. This must be one of the keys from the
+               federated_identity_providers attribute.
+            id_token: an id token issued by the federated identity provider.
+
+        Returns: the newly created user.
+
+        Raises:
+            FederatedIdentityError: the provided id token was invalid
+            InvalidProvider: the selected provider does not exist
+            UserAlreadySignedUp: the user was already signed up
+        """
+        raise NotImplementedError()
+
+    async def user_credentials_from_federated_identity(
+        self, provider: str, id_token: str
+    ) -> tuple[User, AccessToken, RefreshToken]:
+        """
+        Return credentials for an existing user based on a federated id token.
+
+        Args:
+            provider: federated identity provider to use. This must be one of the keys from the
+               federated_identity_providers attribute.
+            id_token: an id token issued by the federated identity provider
+
+        Returns: the user corresponding to the federated identity credentials, a short lived access
+            token and a longer lived refresh token. The lifetime of the access and refresh tokens
+            can be retrieved via the access_token_lifetime and refresh_token_lifetime attributes.
+
+        Raises:
+            FederatedIdentityError: the provided id token was invalid
+            InvalidProvider: the selected provider does not exist
+            NoSuchUser: no user matching the federated identity provider credentials was found
+        """
+        raise NotImplementedError()
+
+    async def user_credentials_from_refresh_token(
+        self, refresh_token: str
+    ) -> tuple[User, AccessToken, RefreshToken]:
+        """
+        Return credentials for an existing user based on a refresh token.
+
+        Args:
+            refresh_token: a previously issued refresh token.
+
+        Returns: the user corresponding to the refresh token, a short lived access token and a
+            new longer lived refresh token. The lifetime of the access and refresh tokens
+            can be retrieved via the access_token_lifetime and refresh_token_lifetime attributes.
+
+        Raises:
+            InvalidRefreshTokenError: the refresh token provided does not exist, has expired or was
+                previously used.
+        """
+        raise NotImplementedError()
+
+    async def authenticate_user_from_access_token(self, access_token: str) -> User:
+        """
+        Authenticate a user given an access token.
+
+        Args:
+            access_token: access token provided by the incoming request.
+
+        Returns: the authenticated user
+
+        Raises:
+            InvalidAccessTokenError: the provided access token does not exist or has expired.
+        """
+        user = (
+            await self.db_session.execute(
+                sa.select(User)
+                .join(AccessToken)
+                .where(
+                    AccessToken.expires_at >= sa.func.now(),
+                    AccessToken.token == access_token,
+                )
+            )
+        ).scalar_one_or_none()
+        if user is None:
+            raise InvalidAccessTokenError("The access token could not be verified")
+        return user
+
+    def _create_user_credentials(self, user: User) -> tuple[AccessToken, RefreshToken]:
+        access_token = create_access_token(self.db_session, user, self.access_token_lifetime)
+        refresh_token = create_refresh_token(self.db_session, user, self.refresh_token_lifetime)
+        return access_token, refresh_token
 
 
 async def user_or_none_from_access_token(session: AsyncSession, token: str) -> Optional[User]:
@@ -51,10 +178,10 @@ async def user_or_none_from_access_token(session: AsyncSession, token: str) -> O
     ).scalar_one_or_none()
 
 
-async def create_access_token(session: AsyncSession, user: User, expires_in: int) -> AccessToken:
+def create_access_token(session: AsyncSession, user: User, expires_in: int) -> AccessToken:
     """
     Create a new access token for the passed user. The access token is added to the current
-    database session and flushed to the connection.
+    database session.
 
     Args:
         session: the database session
@@ -64,7 +191,7 @@ async def create_access_token(session: AsyncSession, user: User, expires_in: int
     Returns: the newly created access token.
     """
     access_token = AccessToken(
-        token=secrets.token_urlsafe(32),
+        token=secrets.token_urlsafe(64),
         user=user,
         expires_at=sa.func.date_add(
             sa.func.now(),
@@ -72,8 +199,31 @@ async def create_access_token(session: AsyncSession, user: User, expires_in: int
         ),
     )
     session.add(access_token)
-    await session.flush([access_token])
     return access_token
+
+
+def create_refresh_token(session: AsyncSession, user: User, expires_in: int) -> RefreshToken:
+    """
+    Create a new refresh token for the passed user. The refresh token is added to the current
+    database session.
+
+    Args:
+        session: the database session
+        user: the user to create an refresh token for
+        expires_in: the number of seconds from now that the token should expire
+
+    Returns: the newly created refresh token.
+    """
+    refresh_token = RefreshToken(
+        token=secrets.token_urlsafe(64),
+        user=user,
+        expires_at=sa.func.date_add(
+            sa.func.now(),
+            bindparam("expires_in", timedelta(seconds=expires_in), sa.Interval(native=True)),
+        ),
+    )
+    session.add(refresh_token)
+    return refresh_token
 
 
 async def user_from_federated_credential_claims(
