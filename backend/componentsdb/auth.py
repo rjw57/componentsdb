@@ -237,6 +237,7 @@ class AuthenticationProvider:
             FederatedIdentityError: the provided id token was invalid
             InvalidProvider: the selected provider does not exist
         """
+        # TODO: use jti claim to mark when federated credentials are used
         try:
             fip = self.federated_identity_providers[provider]
         except KeyError:
