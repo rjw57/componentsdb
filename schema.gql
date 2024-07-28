@@ -1,0 +1,148 @@
+union AuthCredentialsResponse = Credentials | AuthError
+
+type AuthError {
+  error: AuthErrorType!
+  detail: String!
+}
+
+enum AuthErrorType {
+  NO_SUCH_FEDERATED_IDENTITY_PROVIDER
+  INVALID_FEDERATED_CREDENTIAL
+  INVALID_CREDENTIAL
+}
+
+type AuthMutations {
+  signUpWithFederatedCredential(
+    """Input data for `signUpWithFederatedCredential` mutation"""
+    input: SignUpWithFederatedCredentialInput!
+  ): AuthSignUpResponse!
+  credentialsFromFederatedCredential(
+    """Input data for `credentialsFromFederatedCredential` mutation"""
+    input: CredentialsFromFederatedCredentialInput!
+  ): AuthCredentialsResponse!
+  refreshCredentials(
+    """Input data for `refreshCredentials` mutation"""
+    input: RefreshCredentialsInput!
+  ): AuthCredentialsResponse!
+}
+
+type AuthQueries {
+  federatedIdentityProviders: [FederatedIdentityProvider!]!
+  authenticatedUser: User
+}
+
+union AuthSignUpResponse = User | AuthError
+
+type Cabinet {
+  id: ID!
+  name: String!
+  drawers(after: String = null, first: Int = null): DrawerConnection!
+}
+
+type CabinetConnection {
+  count: Int!
+  edges: [CabinetEdge!]!
+  nodes: [Cabinet!]!
+  pageInfo: PageInfo!
+}
+
+type CabinetEdge {
+  cursor: String!
+  node: Cabinet!
+}
+
+type Collection {
+  id: ID!
+  count: Int!
+  component: Component!
+  drawer: Drawer!
+}
+
+type CollectionConnection {
+  count: Int!
+  edges: [CollectionEdge!]!
+  nodes: [Collection!]!
+  pageInfo: PageInfo!
+}
+
+type CollectionEdge {
+  cursor: String!
+  node: Collection!
+}
+
+type Component {
+  id: ID!
+  code: String!
+  description: String
+  datasheetUrl: String
+  collections(after: String = null, first: Int = null): CollectionConnection!
+}
+
+type Credentials {
+  accessToken: String!
+  refreshToken: String!
+  expiresIn: Int!
+}
+
+input CredentialsFromFederatedCredentialInput {
+  provider: String!
+  credential: String!
+}
+
+type Drawer {
+  id: ID!
+  label: String!
+  collections(after: String = null, first: Int = null): CollectionConnection!
+  cabinet: Cabinet!
+}
+
+type DrawerConnection {
+  count: Int!
+  edges: [DrawerEdge!]!
+  nodes: [Drawer!]!
+  pageInfo: PageInfo!
+}
+
+type DrawerEdge {
+  cursor: String!
+  node: Drawer!
+}
+
+type FederatedIdentityProvider {
+  name: String!
+  audience: String!
+  issuer: String!
+}
+
+type Mutation {
+  auth: AuthMutations!
+}
+
+type PageInfo {
+  startCursor: String
+  endCursor: String
+  hasPreviousPage: Boolean!
+  hasNextPage: Boolean!
+}
+
+type Query {
+  auth: AuthQueries!
+  cabinets(after: String = null, first: Int = null): CabinetConnection!
+  cabinet(id: ID!): Cabinet
+}
+
+input RefreshCredentialsInput {
+  refreshToken: String!
+}
+
+input SignUpWithFederatedCredentialInput {
+  provider: String!
+  credential: String!
+}
+
+type User {
+  id: ID!
+  email: String
+  displayName: String!
+  avatarUrl: String
+}

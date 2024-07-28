@@ -96,6 +96,29 @@ services:
       db:
         condition: service_healthy
 
+  generate-graphql-schema:
+    profiles:
+      - tool
+    build:
+      dockerfile_inline: |
+        FROM python:3.12
+        WORKDIR /usr/src/app/backend
+        RUN pip install poetry
+        COPY poetry.lock pyproject.toml /usr/src/app/backend
+        RUN poetry install
+      context: ./backend
+    entrypoint: ["poetry", "run"]
+    command:
+      [
+        "strawberry",
+        "export-schema",
+        "componentsdb.graphql:schema",
+        "--output",
+        "/usr/src/app/schema.gql",
+      ]
+    volumes:
+      - ./:/usr/src/app
+
   ########## LOCAL APP DEVELOPMENT ##########
 
   backend-dev:
