@@ -4,15 +4,12 @@ from datetime import timedelta
 from typing import Any, Optional
 
 import sqlalchemy as sa
-import structlog
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import bindparam
 
 from .db.models import AccessToken, FederatedUserCredential, User
-
-LOG = structlog.get_logger()
 
 
 class FederatedIdentityProvider(BaseModel):
@@ -27,7 +24,21 @@ class AuthSettings(BaseSettings):
     )
 
 
+class NoSuchUser(RuntimeError):
+    "No user matching the credentials could be found."
+
+
 async def user_or_none_from_access_token(session: AsyncSession, token: str) -> Optional[User]:
+    """
+    Query the user matching the passed access token. If the access token is expired, no user is
+    returned.
+
+    Args:
+        session: the database session
+        token: the access token
+
+    Returns: the matching user or None if the access token is invalid or has expired.
+    """
     return (
         await session.execute(
             sa.select(User)
@@ -41,6 +52,17 @@ async def user_or_none_from_access_token(session: AsyncSession, token: str) -> O
 
 
 async def create_access_token(session: AsyncSession, user: User, expires_in: int) -> AccessToken:
+    """
+    Create a new access token for the passed user. The access token is added to the current
+    database session and flushed to the connection.
+
+    Args:
+        session: the database session
+        user: the user to create an access token for
+        expires_in: the number of seconds from now that the token should expire
+
+    Returns: the newly created access token.
+    """
     access_token = AccessToken(
         token=secrets.token_urlsafe(32),
         user=user,
@@ -54,13 +76,23 @@ async def create_access_token(session: AsyncSession, user: User, expires_in: int
     return access_token
 
 
-class NoSuchUser(RuntimeError):
-    pass
-
-
 async def user_from_federated_credential_claims(
     session: AsyncSession, claims: Mapping[str, Any], *, create_if_not_present=False
 ) -> User:
+    """
+    Find user in database given the claims from a federated credential.
+
+    Args:
+        session: database session
+        claims: claims from federated credential
+        create_if_not_present: if True, create the user if they don't exist, populating the profile
+            from the credential.
+
+    Returns: the authenticated user
+
+    Raises:
+        NoSuchUser: if no matching user can be found and create_if_not_present is False.
+    """
     # Search for a user matching the federated credential.
     user = (
         await session.execute(

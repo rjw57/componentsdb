@@ -69,3 +69,25 @@ async def test_user_from_federated_credential_claims_create_user(
     )
     assert u is not None
     assert u.id != 0
+
+
+@pytest.mark.asyncio
+async def test_no_user_for_invalid_token(faker: Faker, db_session: AsyncSession):
+    assert (await auth.user_or_none_from_access_token(db_session, faker.slug())) is None
+
+
+@pytest.mark.asyncio
+async def test_no_user_for_expired_token(
+    faker: Faker, users: list[dbm.User], db_session: AsyncSession
+):
+    user = users[0]
+    access_token = await auth.create_access_token(db_session, user, 500)
+    u = await auth.user_or_none_from_access_token(db_session, access_token.token)
+    assert u is not None
+    assert u.id == user.id
+
+    access_token.expires_at = faker.past_datetime()
+    db_session.add(access_token)
+    await db_session.flush()
+
+    assert (await auth.user_or_none_from_access_token(db_session, access_token.token)) is None
