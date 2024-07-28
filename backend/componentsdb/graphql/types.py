@@ -1,4 +1,5 @@
-from typing import Any, Optional
+from enum import Enum
+from typing import Annotated, Any, Optional, Union
 
 import strawberry
 from strawberry.field_extensions import InputMutationExtension
@@ -117,6 +118,19 @@ class FederatedIdentityProvider:
     issuer: str
 
 
+@strawberry.enum
+class AuthErrorType(Enum):
+    NO_SUCH_FEDERATED_IDENTITY_PROVIDER = "no_such_federated_identity_provider"
+    INVALID_FEDERATED_CREDENTIAL = "invalid_federated_credential"
+    INVALID_CREDENTIAL = "invalid_credential"
+
+
+@strawberry.type
+class AuthError:
+    error: AuthErrorType
+    detail: str
+
+
 @strawberry.type
 class AuthQueries:
     @strawberry.field
@@ -166,17 +180,19 @@ class AuthMutations:
     @strawberry.mutation(extensions=[InputMutationExtension()])
     def sign_up_with_federated_credential(
         self, info: strawberry.Info, provider: str, credential: str
-    ) -> User:
+    ) -> Annotated[Union[User, AuthError], strawberry.union("AuthSignUpResponse")]:
         raise NotImplementedError()
 
     @strawberry.mutation(extensions=[InputMutationExtension()])
     def credentials_from_federated_credential(
         self, info: strawberry.Info, provider: str, credential: str
-    ) -> Credentials:
+    ) -> Annotated[Union[Credentials, AuthError], strawberry.union("AuthCredentialsResponse")]:
         raise NotImplementedError()
 
     @strawberry.mutation(extensions=[InputMutationExtension()])
-    def refresh_credentials(self, info: strawberry.Info, refresh_token: str) -> Credentials:
+    def refresh_credentials(
+        self, info: strawberry.Info, refresh_token: str
+    ) -> Annotated[Union[Credentials, AuthError], strawberry.union("AuthCredentialsResponse")]:
         raise NotImplementedError()
 
 
