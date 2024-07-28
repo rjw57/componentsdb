@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from strawberry.fastapi import GraphQLRouter
 
-from .graphql import context_from_db_session, schema
+from .graphql import make_context, schema
 
 DB_ENGINE = create_async_engine(os.environ["SQLALCHEMY_DB_URL"])
 SESSION_MAKER = async_sessionmaker(DB_ENGINE, expire_on_commit=False)
@@ -27,7 +27,7 @@ async def get_db_session():
 
 
 async def get_graphql_context(session: AsyncSession = Depends(get_db_session)):
-    return context_from_db_session(session)
+    return make_context(session)
 
 
 graphql_app: APIRouter = GraphQLRouter(

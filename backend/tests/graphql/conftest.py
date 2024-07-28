@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from componentsdb.graphql import context_from_db_session
+from componentsdb.graphql import make_context
 
 
 @pytest.fixture
 def context(db_session: AsyncSession):
-    return context_from_db_session(db_session)
+    return make_context(db_session)
