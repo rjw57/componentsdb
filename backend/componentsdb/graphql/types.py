@@ -1,18 +1,16 @@
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 import strawberry
 from strawberry.field_extensions import InputMutationExtension
 
 from ..db import models as dbm
+from . import context
 from .pagination import Connection, Node, PaginationParams
 
-if TYPE_CHECKING:
-    from .context import DbContext
 
-
-def _db(context: dict[str, Any]) -> "DbContext":
-    db = context.get("db")
-    if db is None:
+def _db(context_: dict[str, Any]) -> "context.DbContext":
+    db = context_.get("db")
+    if db is None or not isinstance(db, context.DbContext):
         raise ValueError("context has no DbContext instance available via the 'db' key")
     return db
 
