@@ -48,3 +48,8 @@ tasks:
     desc: "open a database shell"
     cmds:
       - docker compose run --rm psql {{.CLI_ARGS}}
+
+  backend-build-docs:
+    desc: "build documentation for backend"
+    cmds:
+      - PYTHONPATH=backend/ poetry -C backend run sphinx-build backend/docs backend/build/docs
