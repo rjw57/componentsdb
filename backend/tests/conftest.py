@@ -55,8 +55,7 @@ if _testing_db_url == "":
             raise RuntimeError("Timed out waiting for container to be healthy")
 
         host, port = postgres_container.get_addr("5432/tcp")
-        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{
-            host}:{port}/pytest-db"
+        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{host}:{port}/pytest-db"
         return url
 
 else:
