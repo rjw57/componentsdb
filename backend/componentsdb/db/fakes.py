@@ -35,17 +35,22 @@ def fake_collection(
     )
 
 
-def fake_user() -> m.User:
-    return m.User()
+def fake_user(faker: Faker) -> m.User:
+    return m.User(
+        email=faker.optional.email(),
+        email_verified=faker.pybool(),
+        display_name=faker.name(),
+        avatar_url=faker.optional.url(schemes=["https"]),
+    )
 
 
 def fake_access_token(faker: Faker, user: Optional[m.User] = None) -> m.AccessToken:
-    user = user if user is not None else fake_user()
+    user = user if user is not None else fake_user(faker)
     return m.AccessToken(token=faker.slug(), user=user, expires_at=faker.date_time(datetime.UTC))
 
 
 def fake_federated_user_credential(faker: Faker, user: Optional[m.User] = None) -> m.AccessToken:
-    user = user if user is not None else fake_user()
+    user = user if user is not None else fake_user(faker)
     return m.FederatedUserCredential(
         subject=faker.user_name(),
         audience=faker.url(schemes=["https"]),

@@ -1,95 +1,30 @@
-import dataclasses
 import secrets
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from datetime import timedelta
-from typing import Annotated, Any, Literal, Optional
+from typing import Any, Optional
 
 import sqlalchemy as sa
 import structlog
-from fastapi import APIRouter, Depends, Form, HTTPException
-from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import bindparam
 
 from .db.models import AccessToken, FederatedUserCredential, User
-from .federatedidentity import async_validate_token
 
 LOG = structlog.get_logger()
 
 
+class FederatedIdentityProvider(BaseModel):
+    issuer: str
+    audience: str
+
+
 class AuthSettings(BaseSettings):
     token_lifetime: int = 3600
-    federated_id_token_audience_issuer_pairs: list[tuple[str, str]] = Field(default_factory=list)
-
-    model_config = SettingsConfigDict(env_prefix="AUTH_")
-
-
-@dataclasses.dataclass
-class JWTAuthorizationGrant:
-    grant_type: Annotated[Literal["urn:ietf:params:oauth:grant-type:jwt-bearer"], Form()]
-    assertion: Annotated[str, Form()]
-    allow_sign_up: Annotated[bool, Form()] = False
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: Literal["bearer"] = "bearer"
-    expires_in: int
-
-
-class AuthRouter(APIRouter):
-    def __init__(
-        self,
-        *args,
-        db_session_getter: Callable[..., AsyncSession],
-        settings: Optional[AuthSettings] = None,
-        **kwargs
-    ):
-        super().__init__(*args, **kwargs)
-
-        settings = settings if settings is not None else AuthSettings()
-
-        SessionDep = Annotated[AsyncSession, Depends(db_session_getter)]
-
-        oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-        # TODO: error responses as per OAuth2 spec.
-        @self.post("/token", response_model=TokenResponse)
-        async def token(
-            form_data: Annotated[JWTAuthorizationGrant, Depends()], db_session: SessionDep
-        ):
-            # TODO: jti
-            try:
-                claims = await async_validate_token(
-                    form_data.assertion,
-                    allowed_audience_and_issuers=settings.federated_id_token_audience_issuer_pairs,
-                    required_claims=["aud", "iss", "sub", "exp"],
-                )
-            except Exception:
-                LOG.exception("Error validating token")
-                raise HTTPException(403, detail="invalid token")
-            try:
-                user = await user_from_federated_credential_claims(
-                    db_session,
-                    claims,
-                    create_if_not_present=form_data.allow_sign_up,
-                )
-            except NoSuchUser:
-                raise HTTPException(400, detail="no such user")
-            access_token = await create_access_token(db_session, user, settings.token_lifetime)
-            return TokenResponse(
-                access_token=access_token.token, expires_in=settings.token_lifetime
-            )
-
-        @self.get("/userinfo")
-        async def userinfo(token: Annotated[str, Depends(oauth2_scheme)], db_session: SessionDep):
-            user = await user_or_none_from_access_token(db_session, token)
-            if user is None:
-                LOG.info("no user matches access token", token=token)
-                raise HTTPException(403, detail="invalid token")
-            return {"id": user.id}
+    federated_identity_providers: dict[str, FederatedIdentityProvider] = Field(
+        default_factory=dict
+    )
 
 
 async def user_or_none_from_access_token(session: AsyncSession, token: str) -> Optional[User]:
@@ -145,13 +80,20 @@ async def user_from_federated_credential_claims(
     if not create_if_not_present:
         raise NoSuchUser("No user matches the federated credential provided.")
 
-    # ... otherwise sign up the user with the new credentials.
-    user = User()
+    # ... otherwise sign up the user with the new credentials populating the profile from the
+    # claims.
+    user = User(
+        email=claims.get("email", None),
+        email_verified=bool(claims.get("email_verified", False)),
+        display_name=claims.get("name", claims["sub"]),
+        avatar_url=claims.get("picture", None),
+    )
     cred = FederatedUserCredential(
         user=user,
         audience=claims["aud"],
         issuer=claims["iss"],
         subject=claims["sub"],
+        most_recent_claims=claims,
     )
     session.add_all([user, cred])
     await session.flush([user, cred])

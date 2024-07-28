@@ -1,10 +1,8 @@
 import asyncio
-import contextlib
 from typing import Mapping, Optional
 
 import requests
 from requests.exceptions import RequestException
-from requests_cache import CachedSession
 
 from ..exceptions import TransportError
 from . import AsyncRequestBase, RequestBase, Response
@@ -51,17 +49,8 @@ class AsyncRequestsSession(AsyncRequestBase):
         return await asyncio.to_thread(self._sync_request, *args, **kwargs)
 
 
-_cached_session = CachedSession(backend="memory")
+#: RequestsSession object which uses a default requests.Session.
+request = RequestsSession()
 
-#: RequestsSession object which uses an in-memory cache.
-request = RequestsSession(_cached_session)
-
-#: AsyncRequestsSession object which uses an in-memory cache.
-async_request = AsyncRequestsSession(_cached_session)
-
-
-@contextlib.contextmanager
-def caching_disabled():
-    "Context manager which disables caching for the default request and async_request transports."
-    with _cached_session.cache_disabled():
-        yield
+#: AsyncRequestsSession object which uses a default requests.Session.
+async_request = AsyncRequestsSession()

@@ -17,7 +17,7 @@ async def fake_items(db_engine: AsyncEngine, faker: Faker):
         session.add(f.fake_drawer(faker))
         session.add(f.fake_component(faker))
         session.add(f.fake_collection(faker))
-        session.add(f.fake_user())
+        session.add(f.fake_user(faker))
         session.add(f.fake_access_token(faker))
         session.add(f.fake_federated_user_credential(faker))
         await session.commit()

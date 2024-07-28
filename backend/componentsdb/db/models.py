@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -108,6 +110,11 @@ sa.Index("idx_collections_component", Collection.component_id)
 class User(Base, ResourceMixin):
     __tablename__ = "users"
 
+    email: Mapped[Optional[str]]
+    display_name: Mapped[str]
+    avatar_url: Mapped[Optional[str]]
+    email_verified: Mapped[bool] = mapped_column(server_default="f")
+
     federated_credentials: Mapped[list["FederatedUserCredential"]] = relationship(
         cascade="all, delete-orphan", back_populates="user"
     )
@@ -136,6 +143,9 @@ class FederatedUserCredential(Base, _TimestampsMixin):
     audience: Mapped[str]
     issuer: Mapped[str]
     user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
+    most_recent_claims: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(postgresql.JSONB), server_default=sa.func.json_build_object()
+    )
 
     user: Mapped[User] = relationship(lazy="raise", back_populates="federated_credentials")
 

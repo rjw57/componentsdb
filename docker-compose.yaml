@@ -124,11 +124,17 @@ services:
       - ./backend:/usr/src/app:ro
     environment:
       SQLALCHEMY_DB_URL: postgresql+asyncpg://components-user:components-pass@db/components
-      AUTH_FEDERATED_ID_TOKEN_AUDIENCE_ISSUER_PAIRS: |
-        [
-          ["32555940559.apps.googleusercontent.com", "https://accounts.google.com"],
-          ["372542478003-8qf97m4bina5uscsiqtfu63602qkrfjd.apps.googleusercontent.com", "https://accounts.google.com"]
-        ]
+      FEDERATED_IDENTITY_PROVIDERS: |
+        {
+          "google": {
+            "audience": "372542478003-8qf97m4bina5uscsiqtfu63602qkrfjd.apps.googleusercontent.com",
+            "issuer": "https://accounts.google.com"
+          },
+          "gcloud-cli": {
+            "audience": "32555940559.apps.googleusercontent.com",
+            "issuer": "https://accounts.google.com"
+          }
+        }
     depends_on:
       db:
         condition: service_healthy

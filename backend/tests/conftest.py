@@ -55,7 +55,8 @@ if _testing_db_url == "":
             raise RuntimeError("Timed out waiting for container to be healthy")
 
         host, port = postgres_container.get_addr("5432/tcp")
-        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{host}:{port}/pytest-db"
+        url = f"postgresql+asyncpg://pytest-user:pytest-pass@{
+            host}:{port}/pytest-db"
         return url
 
 else:
@@ -65,7 +66,7 @@ else:
         return _testing_db_url
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def alembic_config(db_url):
     config = alembic.config.Config()
     config.set_main_option(
@@ -87,6 +88,11 @@ async def db_engine(db_url, migrated_db):
     engine = create_async_engine(db_url, echo=True)
     yield engine
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def alembic_engine(db_engine):
+    return db_engine
 
 
 @pytest_asyncio.fixture
@@ -139,8 +145,8 @@ async def collections(
 
 
 @pytest_asyncio.fixture
-async def users(db_session: AsyncSession):
-    users = [f.fake_user() for _ in range(50)]
+async def users(faker: Faker, db_session: AsyncSession):
+    users = [f.fake_user(faker) for _ in range(50)]
     db_session.add_all(users)
     await db_session.flush()
     return users

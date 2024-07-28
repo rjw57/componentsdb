@@ -6,16 +6,11 @@ An experimental database for storing electronics components.
 
 1. [Install Task](https://taskfile.dev/installation/)
 2. [Install pre-commit](https://pre-commit.com/#install)
-3. Install pre-commit hooks, pull docker images and build containers:
+3. Install pre-commit hooks, pull docker images, build containers and start the
+   application:
 
     ```sh
-    task init
-    ```
-
-4. Start the application:
-
-    ```sh
-    task up
+    task
     ```
 
 The application is available at http://localhost:3000/. The backend is available

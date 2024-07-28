@@ -6,15 +6,6 @@ from jwcrypto.jwk import JWK
 from jwcrypto.jwt import JWT
 from responses import RequestsMock
 
-from componentsdb.federatedidentity.transport.requests import caching_disabled
-
-
-@pytest.fixture(autouse=True)
-def disabled_request_cache():
-    "Disable HTTP request caching in tests."
-    with caching_disabled():
-        yield
-
 
 @pytest.fixture
 def jwt_issuer(faker: Faker, jwks_uri: str, mocked_responses: RequestsMock) -> str:

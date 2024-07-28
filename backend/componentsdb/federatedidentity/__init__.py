@@ -1,5 +1,5 @@
 from .exceptions import (
-    AuthenticationError,
+    FederatedIdentityError,
     InvalidClaimsError,
     InvalidIssuerError,
     InvalidJWKSUrlError,
@@ -7,17 +7,16 @@ from .exceptions import (
     InvalidTokenError,
     TransportError,
 )
-from .validate import ValidateToken, async_validate_token, validate_token
+from .oidc import AsyncOIDCTokenIssuer, OIDCTokenIssuer
 
 __all__ = [
-    "AuthenticationError",
+    "FederatedIdentityError",
     "InvalidClaimsError",
     "InvalidIssuerError",
     "InvalidJWKSUrlError",
     "InvalidOIDCDiscoveryDocumentError",
     "InvalidTokenError",
     "TransportError",
-    "ValidateToken",
-    "validate_token",
-    "async_validate_token",
+    "OIDCTokenIssuer",
+    "AsyncOIDCTokenIssuer",
 ]

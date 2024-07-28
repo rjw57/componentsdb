@@ -1,6 +1,10 @@
 version: "3"
 
 tasks:
+  default:
+    cmds:
+      - task: init
+      - task: up
   init:
     desc: install pre-commit hooks, pull docker images and rebuild containers
     cmds:

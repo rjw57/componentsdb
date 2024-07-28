@@ -7,9 +7,9 @@ from jwcrypto.jwk import JWK
 from jwcrypto.jws import JWS
 from jwcrypto.jwt import JWT
 
-from componentsdb.federatedidentity import async_validate_token
+from componentsdb.federatedidentity import AsyncOIDCTokenIssuer, OIDCTokenIssuer
 from componentsdb.federatedidentity import exceptions as exc
-from componentsdb.federatedidentity import oidc, validate_token
+from componentsdb.federatedidentity import oidc
 
 from .oidc import make_jwt
 
@@ -40,72 +40,55 @@ def test_missing_issuer_claim(oidc_claims: dict[str, str], ec_jwk: JWK):
 
 
 def test_basic_verification(faker: Faker, oidc_token: str, oidc_audience: str, jwt_issuer: str):
-    validate_token(
-        oidc_token,
-        allowed_audience_and_issuers=[
-            (faker.url(), faker.url()),
-            (oidc_audience, jwt_issuer),
-        ],
-    )
+    provider = OIDCTokenIssuer(jwt_issuer, oidc_audience)
+    provider.prepare()
+    provider.validate(oidc_token)
 
 
 @pytest.mark.asyncio
 async def test_basic_async_verification(
     faker: Faker, oidc_token: str, oidc_audience: str, jwt_issuer: str
 ):
-    await async_validate_token(
-        oidc_token,
-        allowed_audience_and_issuers=[
-            (faker.url(), faker.url()),
-            (oidc_audience, jwt_issuer),
-        ],
-    )
+    provider = AsyncOIDCTokenIssuer(jwt_issuer, oidc_audience)
+    await provider.prepare()
+    provider.validate(oidc_token)
 
 
 def test_mismatched_audience(faker: Faker, oidc_token: str, jwt_issuer: str):
+    provider = OIDCTokenIssuer(jwt_issuer, faker.url(schemes=["https"]))
+    provider.prepare()
     with pytest.raises(exc.InvalidClaimsError):
-        validate_token(
-            oidc_token,
-            allowed_audience_and_issuers=[
-                (faker.url(schemes=["https"]), jwt_issuer),
-            ],
-        )
+        provider.validate(oidc_token)
 
 
-def test_mismatched_issuer(faker: Faker, oidc_token: str, oidc_audience: str):
-    with pytest.raises(exc.InvalidClaimsError):
-        validate_token(
-            oidc_token,
-            allowed_audience_and_issuers=[
-                (oidc_audience, faker.url(schemes=["https"])),
-            ],
-        )
+def test_issuer_not_url(oidc_token: str, oidc_audience: str):
+    provider = OIDCTokenIssuer("-not a url-", oidc_audience)
+    with pytest.raises(exc.InvalidIssuerError):
+        provider.prepare()
+
+
+def test_issuer_bad_scheme(faker: Faker, oidc_token: str, oidc_audience: str):
+    provider = OIDCTokenIssuer(faker.url(schemes=["http"]), oidc_audience)
+    with pytest.raises(exc.InvalidIssuerError):
+        provider.prepare()
 
 
 @pytest.mark.parametrize("alg", ["RS256", "ES256"])
-def test_bad_issuer_scheme(
-    alg: str, faker: Faker, oidc_claims: dict[str, str], oidc_audience: str, jwks: dict[str, JWK]
+def test_mismatched_issuer(
+    alg: str,
+    faker: Faker,
+    oidc_claims: dict[str, str],
+    oidc_audience: str,
+    jwt_issuer: str,
+    jwks: dict[str, JWK],
 ):
-    iss = faker.url(schemes=["http"])
+    provider = OIDCTokenIssuer(jwt_issuer, oidc_audience)
+    provider.prepare()
+    iss = faker.url(schemes=["https"])
     oidc_claims["iss"] = iss
-    with pytest.raises(exc.InvalidIssuerError):
-        validate_token(
-            make_jwt(oidc_claims, jwks[alg], alg),
-            allowed_audience_and_issuers=[(oidc_audience, iss)],
-        )
-
-
-@pytest.mark.parametrize("alg", ["RS256", "ES256"])
-def test_issuer_not_url(
-    alg: str, faker: Faker, oidc_claims: dict[str, str], oidc_audience: str, jwks: dict[str, JWK]
-):
-    iss = "not - a - url"
-    oidc_claims["iss"] = iss
-    with pytest.raises(exc.InvalidIssuerError):
-        validate_token(
-            make_jwt(oidc_claims, jwks[alg], alg),
-            allowed_audience_and_issuers=[(oidc_audience, iss)],
-        )
+    token = make_jwt(oidc_claims, jwks[alg], alg)
+    with pytest.raises(exc.InvalidClaimsError):
+        provider.validate(token)
 
 
 @pytest.mark.parametrize("alg", ["RS256", "ES256"])
@@ -117,12 +100,12 @@ def test_exp_claim_in_past(
     jwt_issuer: str,
     jwks: dict[str, JWK],
 ):
+    provider = OIDCTokenIssuer(jwt_issuer, oidc_audience)
+    provider.prepare()
     oidc_claims["exp"] = datetime.datetime.now(datetime.UTC).timestamp() - 100000
+    token = make_jwt(oidc_claims, jwks[alg], alg)
     with pytest.raises(exc.InvalidTokenError):
-        validate_token(
-            make_jwt(oidc_claims, jwks[alg], alg),
-            allowed_audience_and_issuers=[(oidc_audience, jwt_issuer)],
-        )
+        provider.validate(token)
 
 
 @pytest.mark.parametrize("alg", ["RS256", "ES256"])
@@ -134,9 +117,9 @@ def test_nbf_claim_in_future(
     jwt_issuer: str,
     jwks: dict[str, JWK],
 ):
+    provider = OIDCTokenIssuer(jwt_issuer, oidc_audience)
+    provider.prepare()
     oidc_claims["nbf"] = datetime.datetime.now(datetime.UTC).timestamp() + 100000
+    token = make_jwt(oidc_claims, jwks[alg], alg)
     with pytest.raises(exc.InvalidTokenError):
-        validate_token(
-            make_jwt(oidc_claims, jwks[alg], alg),
-            allowed_audience_and_issuers=[(oidc_audience, jwt_issuer)],
-        )
+        provider.validate(token)
