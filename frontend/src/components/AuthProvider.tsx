@@ -12,4 +12,12 @@ export interface AuthState {}
 
 export const AuthContext = React.createContext<AuthState | null>(null);
 
-export default AuthContext;
+export interface AuthProviderProps {
+  children?: React.ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  return <>{children}</>;
+};
+
+export default AuthProvider;
