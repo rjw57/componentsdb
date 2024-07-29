@@ -1,3 +1,4 @@
+import React from "react";
 import "graphiql/graphiql.min.css";
 
 import { Layout, theme } from "antd";
@@ -5,20 +6,26 @@ import { GraphiQL } from "graphiql";
 import { createGraphiQLFetcher } from "@graphiql/toolkit";
 
 import { Page, PageHeader } from ".";
-
-import { unauthenticatedClient } from "../apolloClient";
-import { useFederatedIdentitiyProviders } from "../hooks";
-
-const fetcher = createGraphiQLFetcher({
-  url: "/graphql",
-});
+import { useAuth } from "../hooks";
 
 export const GraphiQLPage: React.FC = () => {
   const {
     token: { borderRadiusLG },
   } = theme.useToken();
-  const { data: providers } = useFederatedIdentitiyProviders({ client: unauthenticatedClient });
-  console.log(providers);
+
+  const auth = useAuth();
+
+  const fetcher = React.useMemo(() => {
+    return createGraphiQLFetcher({
+      url: "/graphql",
+      headers: {
+        ...(auth?.credentials?.accessToken
+          ? { Authorization: `Bearer ${auth.credentials.accessToken}` }
+          : {}),
+      },
+    });
+  }, [auth?.credentials?.accessToken]);
+
   return (
     <Page>
       <Layout style={{ height: "100vh" }}>

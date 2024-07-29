@@ -1,7 +1,9 @@
 import React from "react";
 import { ConfigProvider } from "antd";
+import { ApolloProvider } from "@apollo/client";
 
-import { useThemeConfig } from "../hooks";
+import { useThemeConfig, useAuth } from "../hooks";
+import { makeClient } from "../apolloClient";
 
 export interface PageProps {
   children?: React.ReactNode;
@@ -9,7 +11,17 @@ export interface PageProps {
 
 export const Page: React.FC<PageProps> = ({ children }) => {
   const theme = useThemeConfig();
-  return <ConfigProvider theme={theme}>{children}</ConfigProvider>;
+  const { credentials } = useAuth() ?? {};
+
+  const apolloClient = React.useMemo(() => {
+    return makeClient({ accessToken: credentials?.accessToken });
+  }, [credentials?.accessToken]);
+
+  return (
+    <ApolloProvider client={apolloClient}>
+      <ConfigProvider theme={theme}>{children}</ConfigProvider>
+    </ApolloProvider>
+  );
 };
 
 export default Page;
