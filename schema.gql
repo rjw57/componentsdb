@@ -12,10 +12,6 @@ enum AuthErrorType {
 }
 
 type AuthMutations {
-  signUpWithFederatedCredential(
-    """Input data for `signUpWithFederatedCredential` mutation"""
-    input: SignUpWithFederatedCredentialInput!
-  ): AuthSignUpResponse!
   credentialsFromFederatedCredential(
     """Input data for `credentialsFromFederatedCredential` mutation"""
     input: CredentialsFromFederatedCredentialInput!
@@ -30,8 +26,6 @@ type AuthQueries {
   federatedIdentityProviders: [FederatedIdentityProvider!]!
   authenticatedUser: User
 }
-
-union AuthSignUpResponse = User | AuthError
 
 type Cabinet {
   id: ID!
@@ -87,6 +81,7 @@ type Credentials {
 input CredentialsFromFederatedCredentialInput {
   provider: String!
   credential: String!
+  isNewUser: Boolean! = false
 }
 
 type Drawer {
@@ -133,11 +128,6 @@ type Query {
 
 input RefreshCredentialsInput {
   refreshToken: String!
-}
-
-input SignUpWithFederatedCredentialInput {
-  provider: String!
-  credential: String!
 }
 
 type User {

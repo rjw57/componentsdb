@@ -178,14 +178,8 @@ class Query:
 @strawberry.type
 class AuthMutations:
     @strawberry.mutation(extensions=[InputMutationExtension()])
-    def sign_up_with_federated_credential(
-        self, info: strawberry.Info, provider: str, credential: str
-    ) -> Annotated[Union[User, AuthError], strawberry.union("AuthSignUpResponse")]:
-        raise NotImplementedError()
-
-    @strawberry.mutation(extensions=[InputMutationExtension()])
     def credentials_from_federated_credential(
-        self, info: strawberry.Info, provider: str, credential: str
+        self, info: strawberry.Info, provider: str, credential: str, is_new_user: bool = False
     ) -> Annotated[Union[Credentials, AuthError], strawberry.union("AuthCredentialsResponse")]:
         raise NotImplementedError()
 

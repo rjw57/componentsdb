@@ -162,9 +162,6 @@ class FederatedUserCredential(Base, ResourceMixin):
     audience: Mapped[str]
     issuer: Mapped[str]
     user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
-    most_recent_claims: Mapped[dict] = mapped_column(
-        MutableDict.as_mutable(postgresql.JSONB), server_default=sa.func.json_build_object()
-    )
 
     user: Mapped[User] = relationship(lazy="raise", back_populates="federated_credentials")
 
@@ -176,4 +173,20 @@ sa.Index(
     FederatedUserCredential.audience,
     FederatedUserCredential.issuer,
     unique=True,
+)
+
+
+@dataclass
+class FederatedUserCredentialUse(Base, _IdMixin, _TimestampsMixin):
+    __tablename__ = "federated_user_credential_uses"
+
+    claims: Mapped[dict] = mapped_column(
+        MutableDict.as_mutable(postgresql.JSONB), server_default=sa.func.json_build_object()
+    )
+
+
+sa.Index(
+    "idx_federated_user_credential_uses_claims",
+    FederatedUserCredentialUse.claims,
+    postgresql_using="gin",
 )

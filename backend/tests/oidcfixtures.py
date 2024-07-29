@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import pytest
 from faker import Faker
@@ -27,11 +28,14 @@ def oidc_audience(faker: Faker) -> str:
 
 
 @pytest.fixture
-def oidc_claims(jwt_issuer: str, oidc_subject: str, oidc_audience: str) -> dict[str, str]:
+def oidc_claims(
+    faker: Faker, jwt_issuer: str, oidc_subject: str, oidc_audience: str
+) -> dict[str, str]:
     return {
         "iss": jwt_issuer,
         "sub": oidc_subject,
         "aud": oidc_audience,
+        "jti": faker.uuid4(),
     }
 
 
@@ -42,5 +46,15 @@ def make_jwt(claims: dict[str, str], key: JWK, alg: str) -> str:
 
 
 @pytest.fixture(params=["ES256", "RS256"])
-def oidc_token(request, oidc_claims: dict[str, str], jwks: dict[str, JWK]) -> str:
-    return make_jwt(oidc_claims, jwks[request.param], request.param)
+def make_oidc_token(request, jwks: dict[str, JWK], oidc_claims: dict[str, Any]):
+    def _make_oidc_token(claims: Any = None):
+        return make_jwt(
+            claims if claims is not None else oidc_claims, jwks[request.param], request.param
+        )
+
+    return _make_oidc_token
+
+
+@pytest.fixture
+def oidc_token(make_oidc_token):
+    return make_oidc_token()

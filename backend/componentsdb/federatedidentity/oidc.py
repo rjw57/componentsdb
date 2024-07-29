@@ -152,11 +152,13 @@ async def async_fetch_jwks(unvalidated_issuer: str, request: AsyncRequestBase) -
 def unvalidated_claims_from_token(unvalidated_token: str) -> UnvalidatedClaims:
     "Parse and extract unverified claims from the token."
     try:
-        payload = json.loads(JWT.from_jose_token(unvalidated_token).token.objects["payload"])
-    except json.JSONDecodeError:
+        jwt = JWT.from_jose_token(unvalidated_token)
+    except Exception:
+        raise InvalidTokenError("Could not parse token as JWT")
+    try:
+        payload = json.loads(jwt.token.objects["payload"])
+    except (json.JSONDecodeError, KeyError):
         raise InvalidTokenError("Could not decode token payload as JSON.")
-    if not isinstance(payload, dict):
-        raise InvalidTokenError("Token claims are not a dictionary.")
     return cast(UnvalidatedClaims, payload)
 
 
@@ -214,7 +216,7 @@ class _BaseOIDCTokenIssuer:
             )
 
         if "aud" not in unvalidated_claims:
-            raise InvalidClaimsError("'aud' claim mauding from token")
+            raise InvalidClaimsError("'aud' claim is missing from token")
         if unvalidated_claims["aud"] != self.audience:
             raise InvalidClaimsError(
                 f"'aud' claims has value '{unvalidated_claims['aud']}', "

@@ -10,7 +10,6 @@ from strawberry.fastapi import GraphQLRouter
 
 from .auth import AuthenticationProvider, AuthError, FederatedIdentityProvider
 from .db.models import User
-from .federatedidentity import FederatedIdentityError
 from .graphql import make_context, schema
 
 
@@ -61,7 +60,7 @@ async def get_authenticated_user(
     access_token = authorization.split(" ")[1]
     try:
         return await auth_provider.authenticate_user_from_access_token(access_token)
-    except (AuthError, FederatedIdentityError) as e:
+    except AuthError as e:
         raise HTTPException(403, detail=str(e))
 
 

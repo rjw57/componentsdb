@@ -103,11 +103,11 @@ async def test_updated_at_updated(table: str, fake_items, faker: Faker, db_engin
                         """
                         UPDATE federated_user_credentials
                         SET
-                            most_recent_claims = :claims
+                            issuer = 'foo'
                         WHERE id = :id
                         """
                     ),
-                    {"id": id, "claims": '{"foo": 1}'},
+                    {"id": id},
                 )
             case _:
                 raise NotImplementedError()
