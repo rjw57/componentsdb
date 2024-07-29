@@ -111,7 +111,7 @@ services:
         ENTRYPOINT ["poetry", "run", "fastapi"]
         EXPOSE 8000
       context: ./backend
-    command: ["dev", "--host", "0.0.0.0", "./componentsdb/app.py"]
+    command: ["dev", "--host", "0.0.0.0", "./componentsdb/fastapi/app.py"]
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8000/healthy"]
       interval: 30s
