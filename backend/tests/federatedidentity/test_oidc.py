@@ -70,3 +70,4 @@ def test_multiple_prepare_only_fetches_once(
     unprepared_oidc_token_issuer.prepare()
     mocked_responses.assert_call_count(oidc.oidc_discovery_document_url(oidc_claims["iss"]), 1)
     assert unprepared_oidc_token_issuer.validate(oidc_token) == oidc_claims
+    mocked_responses.assert_call_count(oidc.oidc_discovery_document_url(oidc_claims["iss"]), 1)
