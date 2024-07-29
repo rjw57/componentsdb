@@ -29,6 +29,7 @@ async def get_authenticated_user(
         raise HTTPException(403, detail="bearer token required")
     access_token = authorization.split(" ")[1]
     try:
-        return await auth_provider.authenticate_user_from_access_token(access_token)
+        user = await auth_provider.authenticate_user_from_access_token(access_token)
     except AuthError as e:
         raise HTTPException(403, detail=str(e))
+    return user
