@@ -69,3 +69,10 @@ repos:
         pass_filenames: false
         language: system
         entry: "docker compose run --no-TTY --rm generate-graphql-schema"
+      - id: prettier
+        name: prettier
+        additional_dependencies:
+          - 'prettier@^3.3.3'
+        entry: prettier --write --list-different --ignore-unknown
+        language: node
+        files: ^frontend/

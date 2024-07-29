@@ -16,7 +16,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "fix": "prettier --write ."
   },
   "eslintConfig": {
     "extends": [
@@ -45,7 +46,9 @@
     "graphiql": "^3.3.2",
     "graphql": "^16.9.0",
     "oidc-client-ts": "^3.0.1",
+    "prettier": "^3.3.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
-  }
+  },
+  "prettier": {}
 }
