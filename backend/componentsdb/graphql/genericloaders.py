@@ -11,7 +11,13 @@ from strawberry.dataloader import DataLoader
 
 from ..db import models as dbm
 from . import types
-from .pagination import DEFAULT_LIMIT, Connection, Edge, MinMaxIds, PaginationParams
+from .paginationtypes import (
+    DEFAULT_LIMIT,
+    Connection,
+    Edge,
+    MinMaxIds,
+    PaginationParams,
+)
 
 _R = TypeVar("_R", bound=dbm.ResourceMixin)
 _N = TypeVar("_N", bound="types.Node")

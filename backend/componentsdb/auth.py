@@ -34,6 +34,8 @@ class UserCredentials:
     user: User
     access_token: str
     refresh_token: str
+    access_token_lifetime: int
+    refresh_token_lifetime: int
 
 
 class AuthenticationProvider:
@@ -222,7 +224,11 @@ class AuthenticationProvider:
         self.db_session.add_all([access_token, refresh_token])
         await self.db_session.flush([access_token, refresh_token])
         return UserCredentials(
-            user=user, access_token=access_token.token, refresh_token=refresh_token.token
+            user=user,
+            access_token=access_token.token,
+            refresh_token=refresh_token.token,
+            access_token_lifetime=self.access_token_lifetime,
+            refresh_token_lifetime=self.refresh_token_lifetime,
         )
 
     async def _query_user_from_federated_credential(

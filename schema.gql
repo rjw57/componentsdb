@@ -1,4 +1,4 @@
-union AuthCredentialsResponse = Credentials | AuthError
+union AuthCredentialsResponse = UserCredentials | AuthError
 
 type AuthError {
   error: AuthErrorType!
@@ -9,6 +9,7 @@ enum AuthErrorType {
   NO_SUCH_FEDERATED_IDENTITY_PROVIDER
   INVALID_FEDERATED_CREDENTIAL
   INVALID_CREDENTIAL
+  USER_ALREADY_SIGNED_UP
 }
 
 type AuthMutations {
@@ -72,12 +73,6 @@ type Component {
   collections(after: String = null, first: Int = null): CollectionConnection!
 }
 
-type Credentials {
-  accessToken: String!
-  refreshToken: String!
-  expiresIn: Int!
-}
-
 input CredentialsFromFederatedCredentialInput {
   provider: String!
   credential: String!
@@ -133,6 +128,14 @@ input RefreshCredentialsInput {
 type User {
   id: ID!
   email: String
+  emailVerified: Boolean!
   displayName: String!
   avatarUrl: String
+}
+
+type UserCredentials {
+  user: User!
+  accessToken: String!
+  refreshToken: String!
+  expiresIn: Int!
 }
