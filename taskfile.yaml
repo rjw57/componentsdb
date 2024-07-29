@@ -20,6 +20,10 @@ tasks:
     desc: "start application"
     cmds:
       - docker compose --profile=prod up --wait {{.CLI_ARGS}}
+  logs:
+    desc: "show frontend and backend logs"
+    cmds:
+      - docker compose --profile=dev logs -f backend-dev frontend-dev
   down:
     desc: "stop running containers"
     cmds:
