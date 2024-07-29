@@ -291,3 +291,34 @@ async def test_refresh_bad_token(
 
     error = result.data["auth"]["refreshCredentials"]
     assert error["error"] == "INVALID_CREDENTIAL"
+
+
+@pytest.mark.asyncio
+async def test_user_not_signed_up(
+    federated_identity_provider_name: str,
+    oidc_token: str,
+    context,
+):
+    result = await schema.execute(
+        """
+        mutation ($input: CredentialsFromFederatedCredentialInput!) {
+            auth {
+                credentialsFromFederatedCredential(input: $input) {
+                    __typename
+                    ... on AuthError {
+                        error
+                    }
+                }
+            }
+        }
+        """,
+        variable_values={
+            "input": {"credential": oidc_token, "provider": federated_identity_provider_name}
+        },
+        context_value=context,
+    )
+    assert result.errors is None
+    assert result.data is not None
+
+    error = result.data["auth"]["credentialsFromFederatedCredential"]
+    assert error["error"] == "USER_NOT_SIGNED_UP"

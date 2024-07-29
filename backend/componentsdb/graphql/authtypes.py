@@ -76,6 +76,7 @@ class AuthErrorType(enum.StrEnum):
     INVALID_FEDERATED_CREDENTIAL = enum.auto()
     INVALID_CREDENTIAL = enum.auto()
     USER_ALREADY_SIGNED_UP = enum.auto()
+    USER_NOT_SIGNED_UP = enum.auto()
 
 
 @strawberry.type
@@ -127,6 +128,8 @@ class AuthMutations:
             return AuthError(error=AuthErrorType.INVALID_FEDERATED_CREDENTIAL, detail=str(e))
         except auth.UserAlreadySignedUp as e:
             return AuthError(error=AuthErrorType.USER_ALREADY_SIGNED_UP, detail=str(e))
+        except auth.NoSuchUser as e:
+            return AuthError(error=AuthErrorType.USER_NOT_SIGNED_UP, detail=str(e))
         return UserCredentials.from_auth_user_credentials(credentials)
 
     @strawberry.mutation(extensions=[InputMutationExtension()])
