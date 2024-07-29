@@ -1,6 +1,6 @@
 import "graphiql/graphiql.min.css";
 
-import { Layout, Menu } from "antd";
+import { Layout } from "antd";
 import { GraphiQL } from "graphiql";
 import { createGraphiQLFetcher } from "@graphiql/toolkit";
 
