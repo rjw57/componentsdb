@@ -1,6 +1,5 @@
-import { useQuery } from "@apollo/client";
-
 import { graphql } from "../__generated__/gql";
+import wrapApolloUseQuery from "./wrapApolloUseQuery";
 
 const federatedIdentityProviders = graphql(`
   query federatedIdentityProviders {
@@ -14,6 +13,6 @@ const federatedIdentityProviders = graphql(`
   }
 `);
 
-export const useFederatedIdentitiyProviders = () => useQuery(federatedIdentityProviders);
+export const useFederatedIdentitiyProviders = wrapApolloUseQuery(federatedIdentityProviders);
 
 export default useFederatedIdentitiyProviders;

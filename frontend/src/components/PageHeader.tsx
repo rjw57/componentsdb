@@ -1,10 +1,6 @@
 import { Row, Col, Button, Space } from "antd";
 
-import { useFederatedIdentitiyProviders } from "../hooks";
-
 export const PageHeader = () => {
-  const { data } = useFederatedIdentitiyProviders();
-  console.log(data);
   return (
     <Row>
       <Col flex="auto" />
