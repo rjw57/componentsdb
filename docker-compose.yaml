@@ -124,6 +124,7 @@ services:
       - ./backend:/usr/src/app:ro
     environment:
       SQLALCHEMY_DB_URL: postgresql+asyncpg://components-user:components-pass@db/components
+      ACCESS_TOKEN_LIFETIME: "360"  # a short period so we stress-test refresh logic
       FEDERATED_IDENTITY_PROVIDERS: |
         {
           "google": {
