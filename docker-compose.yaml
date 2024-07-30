@@ -98,9 +98,9 @@ services:
 
   ########## LOCAL APP DEVELOPMENT ##########
 
-  backend-dev:
+  backend-cli:
     profiles:
-      - dev
+      - tool
     build:
       dockerfile_inline: |
         FROM python:3.12
@@ -108,18 +108,9 @@ services:
         RUN pip install poetry
         COPY poetry.lock pyproject.toml /usr/src/app/
         RUN poetry install
-        ENTRYPOINT ["poetry", "run", "fastapi"]
+        ENTRYPOINT ["poetry", "run", "python", "-m", "componentsdb.cli"]
         EXPOSE 8000
       context: ./backend
-    command: ["dev", "--host", "0.0.0.0", "./componentsdb/fastapi/app.py"]
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthy"]
-      interval: 30s
-      retries: 5
-      start_period: 120s
-      start_interval: 1s
-    ports:
-      - 8000:8000
     volumes:
       - ./backend:/usr/src/app:ro
     environment:
@@ -141,6 +132,18 @@ services:
         condition: service_healthy
       db-migrate:
         condition: service_completed_successfully
+
+  backend-dev:
+    profiles:
+      - dev
+    extends: backend-cli
+    command: ["server", "dev", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthy"]
+      interval: 30s
+      retries: 5
+      start_period: 120s
+      start_interval: 1s
 
   frontend-dev:
     profiles:
