@@ -8,46 +8,66 @@ import { AuthContextError } from "../contexts";
 import { useAuth } from "../hooks";
 import { AuthErrorType } from "../__generated__/gql/graphql";
 
-const errorDescriptions = new Map<AuthErrorType, React.ReactNode>([
-  [
-    AuthErrorType.UserAlreadySignedUp,
-    <>
-      A user has already signed up with that account. You can try{" "}
-      <Link to="/signin">signing in</Link> instead.
-    </>,
-  ],
-  [
-    AuthErrorType.UserNotSignedUp,
-    <>
-      There is no account associated with that sign in. You can try{" "}
-      <Link to="/signup">signing up</Link> instead.
-    </>,
-  ],
-  [
-    AuthErrorType.InvalidFederatedCredential,
-    <>There as a problem with the response from the sign in provider. Please try again.</>,
-  ],
-]);
-
 export interface SignInOrUpFormProps {
-  type?: "sign_in" | "sign_up";
+  initialType?: "sign_in" | "sign_up";
   onSuccess?: () => void;
 }
 
 const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
-  type = "sign_in",
+  initialType = "sign_in",
   onSuccess = () => {},
 }) => {
+  const [type, underlyingSetType] = React.useState<"sign_in" | "sign_up">(initialType);
   const { token } = theme.useToken();
   const auth = useAuth();
+
+  const setType = (type: "sign_in" | "sign_up") => {
+    auth && auth.dismissSignUpError();
+    auth && auth.dismissSignInError();
+    underlyingSetType(type);
+  };
 
   // Since the Google sign in button size needs to be set explicitly, we use a horrible
   // ResizeObserver hack to compute the width.
   const googleHackRef = React.useRef<HTMLDivElement>(null);
   const { width: googleButtonWidth = 50 } = useResizeObserver({ ref: googleHackRef });
-  console.log(googleButtonWidth);
 
   const isGoogleSignInSupported = !!auth?.google;
+
+  const errorDescriptions = new Map<AuthErrorType, React.ReactNode>([
+    [
+      AuthErrorType.UserAlreadySignedUp,
+      <>
+        A user has already signed up with that account. You can try{" "}
+        <Typography.Link
+          onClick={() => {
+            setType("sign_in");
+          }}
+        >
+          signing in
+        </Typography.Link>{" "}
+        instead.
+      </>,
+    ],
+    [
+      AuthErrorType.UserNotSignedUp,
+      <>
+        There is no account associated with that sign in. You can try{" "}
+        <Typography.Link
+          onClick={() => {
+            setType("sign_up");
+          }}
+        >
+          signing up
+        </Typography.Link>{" "}
+        instead.
+      </>,
+    ],
+    [
+      AuthErrorType.InvalidFederatedCredential,
+      <>There as a problem with the response from the sign in provider. Please try again.</>,
+    ],
+  ]);
 
   const describeError = ({ error, detail }: AuthContextError) =>
     errorDescriptions.get(error) ?? detail;
@@ -118,12 +138,26 @@ const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
       <div style={{ textAlign: "center" }}>
         {type === "sign_in" && (
           <Typography.Text>
-            Don't have an account? <Link to="/signup">Sign up now.</Link>
+            Don't have an account?{" "}
+            <Typography.Link
+              onClick={() => {
+                setType("sign_up");
+              }}
+            >
+              Sign up now.
+            </Typography.Link>
           </Typography.Text>
         )}
         {type === "sign_up" && (
           <Typography.Text>
-            Already registered? <Link to="/signin">Sign in now.</Link>
+            Already registered?{" "}
+            <Typography.Link
+              onClick={() => {
+                setType("sign_in");
+              }}
+            >
+              Sign in now.
+            </Typography.Link>
           </Typography.Text>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 
-import { GraphiQLPage, IndexPage, SignInOrUpPage } from "./components";
+import { GraphiQLPage, IndexPage } from "./components";
 
 export const router = createBrowserRouter([
   {
@@ -12,16 +12,6 @@ export const router = createBrowserRouter([
     path: "/api",
     element: <GraphiQLPage />,
     handle: "api",
-  },
-  {
-    path: "/signin",
-    element: <SignInOrUpPage type="sign_in" />,
-    handle: "signin",
-  },
-  {
-    path: "/signup",
-    element: <SignInOrUpPage type="sign_up" />,
-    handle: "signup",
   },
 ]);
 

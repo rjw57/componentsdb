@@ -5,5 +5,4 @@ export * from "./DefaultPage";
 export * from "./GraphiQLPage";
 export * from "./IndexPage";
 export * from "./PageHeader";
-export * from "./SignInOrUpPage";
 export * from "./SignInOrUpForm";

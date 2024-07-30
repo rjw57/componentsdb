@@ -19,7 +19,7 @@ export const useSignInOrSignUpModal = (): UseSignInOrSignUpModalReturnValue => {
       width: Math.floor(0.8 * token.screenXS),
       content: (
         <SignInOrUpForm
-          type={type}
+          initialType={type}
           onSuccess={() => {
             newModal.destroy();
           }}
