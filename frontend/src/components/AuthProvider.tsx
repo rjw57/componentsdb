@@ -229,7 +229,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
 
     setCredentialsPromise(credentialsPromise);
-
     return credentialsPromise;
   };
 
@@ -278,6 +277,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         signInError,
         signUpError,
+        dismissSignInError: () => {
+          setSignInError(undefined);
+        },
+        dismissSignUpError: () => {
+          setSignUpError(undefined);
+        },
 
         ...(googleProvider
           ? {
@@ -294,14 +299,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           credential: string,
           options?: AuthContextCredentialFetchOptions,
         ) => {
-          signInOrSignUpWithFederatedCredentials(provider, credential, false, options);
+          signInOrSignUpWithFederatedCredentials(provider, credential, false, options).catch(
+            (e) => {
+              console.error("Error signing in:", e);
+            },
+          );
         },
         signUpWithFederatedCredential: (
           provider: string,
           credential: string,
           options?: AuthContextCredentialFetchOptions,
         ) => {
-          signInOrSignUpWithFederatedCredentials(provider, credential, true, options);
+          signInOrSignUpWithFederatedCredentials(provider, credential, true, options).catch((e) => {
+            console.error("Error signing up:", e);
+          });
         },
         refreshCredentials,
         authenticatedFetch,

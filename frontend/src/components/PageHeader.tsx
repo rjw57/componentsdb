@@ -1,6 +1,5 @@
 import { Row, Col, Button, Space, Menu, MenuProps, Typography } from "antd";
 
-import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../hooks";
 import { Link, useMatches } from "react-router-dom";
 
@@ -23,15 +22,6 @@ export const PageHeader = () => {
 
   const user = auth?.user;
   const isSignedIn = !!user;
-  const googleClientId = auth?.google?.clientId ?? "";
-  console.log("auth", isSignedIn, user);
-
-  if (auth?.signUpError) {
-    console.log("sign up error", auth?.signUpError);
-  }
-  if (auth?.signInError) {
-    console.log("sign in error", auth?.signInError);
-  }
 
   return (
     <Row gutter={16}>
@@ -46,50 +36,36 @@ export const PageHeader = () => {
           selectedKeys={routeMatches.map(({ handle }) => `${handle}`)}
         />
       </Col>
+      {isSignedIn && (
+        <Col>
+          <Typography.Text>{auth.user?.displayName}</Typography.Text>
+        </Col>
+      )}
       <Col>
-        <GoogleOAuthProvider clientId={googleClientId}>
-          <Space>
-            {auth?.google && (
-              <>
-                <GoogleLogin
-                  text="signin_with"
-                  onSuccess={({ credential }) => {
-                    credential &&
-                      auth.signInWithFederatedCredential(auth?.google?.provider ?? "", credential);
-                  }}
-                />
-                <GoogleLogin
-                  text="signup_with"
-                  onSuccess={({ credential }) => {
-                    credential &&
-                      auth.signUpWithFederatedCredential(auth?.google?.provider ?? "", credential);
-                  }}
-                />
-              </>
-            )}
-            {!isSignedIn && (
-              <>
-                <Button size="large" type="text">
-                  Sign in
-                </Button>
-                <Button size="large">Sign up</Button>
-              </>
-            )}
-            {isSignedIn && (
-              <>
-                {auth?.user && <div>{auth.user.displayName}</div>}
-                <Button
-                  size="large"
-                  onClick={() => {
-                    auth && auth.signOut();
-                  }}
-                >
-                  Sign out
-                </Button>
-              </>
-            )}
-          </Space>
-        </GoogleOAuthProvider>
+        <Space size="middle">
+          {!isSignedIn && (
+            <>
+              <Button size="large" type="text">
+                <Link to="/signin">Sign in</Link>
+              </Button>
+              <Button size="large">
+                <Link to="/signup">Sign up</Link>
+              </Button>
+            </>
+          )}
+          {isSignedIn && (
+            <>
+              <Button
+                size="large"
+                onClick={() => {
+                  auth && auth.signOut();
+                }}
+              >
+                Sign out
+              </Button>
+            </>
+          )}
+        </Space>
       </Col>
     </Row>
   );

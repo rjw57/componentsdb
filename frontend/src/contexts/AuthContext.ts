@@ -39,6 +39,8 @@ export interface AuthContextValue {
   // Errors from sign-in or sign-up.
   signInError?: AuthContextError;
   signUpError?: AuthContextError;
+  dismissSignInError: () => void;
+  dismissSignUpError: () => void;
 
   // Google Federated Identity Provider details. This is not defined if the API does not support
   // using Google id tokens for authentication.
