@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar, Menu, Space, Typography } from "antd";
+import { Avatar, Menu, Space } from "antd";
 import type { MenuProps } from "antd";
 import { DownOutlined } from "@ant-design/icons";
 
