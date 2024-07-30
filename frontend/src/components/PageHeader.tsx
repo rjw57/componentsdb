@@ -1,7 +1,8 @@
-import { Row, Col, Button, Space, Menu, MenuProps, Typography } from "antd";
+import { theme, Row, Col, Button, Space, Menu, MenuProps, Typography } from "antd";
 import { Link, useMatches } from "react-router-dom";
 
 import { useAuth, useSignInOrSignUpModal } from "../hooks";
+import { UserDropdown } from ".";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -19,6 +20,7 @@ const navMenuItems: MenuItem[] = [
 export const PageHeader = () => {
   const auth = useAuth();
   const routeMatches = useMatches();
+  const { token } = theme.useToken();
 
   const user = auth?.user;
   const isSignedIn = !!user;
@@ -38,17 +40,11 @@ export const PageHeader = () => {
           selectedKeys={routeMatches.map(({ handle }) => `${handle}`)}
         />
       </Col>
-      {isSignedIn && (
-        <Col>
-          <Typography.Text>{auth.user?.displayName}</Typography.Text>
-        </Col>
-      )}
       <Col>
         <Space size="middle">
           {!isSignedIn && (
             <>
               <Button
-                size="large"
                 type="text"
                 onClick={() => {
                   auth && auth.dismissSignInError();
@@ -58,7 +54,6 @@ export const PageHeader = () => {
                 Sign in
               </Button>
               <Button
-                size="large"
                 onClick={() => {
                   auth && auth.dismissSignUpError();
                   showSignInOrUp("sign_up");
@@ -70,16 +65,12 @@ export const PageHeader = () => {
             </>
           )}
           {isSignedIn && (
-            <>
-              <Button
-                size="large"
-                onClick={() => {
-                  auth && auth.signOut();
-                }}
-              >
-                Sign out
-              </Button>
-            </>
+            <UserDropdown
+              avatarUrl={auth.user?.avatarUrl ? auth.user.avatarUrl : undefined}
+              avatarLabel={`${auth.user?.displayName}`.substring(0, 1)}
+              displayName={auth.user?.displayName}
+              style={{ marginRight: -token.padding }}
+            />
           )}
         </Space>
       </Col>

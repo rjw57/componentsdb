@@ -6,3 +6,4 @@ export * from "./GraphiQLPage";
 export * from "./IndexPage";
 export * from "./PageHeader";
 export * from "./SignInOrUpForm";
+export * from "./UserDropdown";

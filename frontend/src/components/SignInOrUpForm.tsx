@@ -1,7 +1,6 @@
 import React from "react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { Divider, theme, Typography, Flex, Alert } from "antd";
-import { Link } from "react-router-dom";
 import { useResizeObserver } from "usehooks-ts";
 
 import { AuthContextError } from "../contexts";
