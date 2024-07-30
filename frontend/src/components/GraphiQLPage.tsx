@@ -26,7 +26,7 @@ export const GraphiQLPage: React.FC = () => {
           top: 0,
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: token.marginXL,
           overflow: "auto",
           borderRadius: token.borderRadiusLG,
         }}
