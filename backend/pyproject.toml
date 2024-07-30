@@ -6,6 +6,10 @@ authors = ["Rich Wareham <rich.componentsdb@richwareham.com>"]
 readme = "../README.md"
 packages = [{include = "componentsdb"}]
 
+[tool.poetry.scripts]
+componentsdb = "componentsdb.cli:app"
+
+
 [tool.poetry.dependencies]
 python = "^3.12"
 sqlalchemy = {extras = ["asyncio"], version = "^2.0.31"}
@@ -20,6 +24,7 @@ fastapi = "^0.111.1"
 pydantic = "^2.8.2"
 pydantic-settings = "^2.3.4"
 python-multipart = "^0.0.9"
+typer = "^0.12.3"
 
 
 [tool.poetry.group.dev.dependencies]
