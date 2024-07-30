@@ -5,7 +5,7 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
-        exclude: ^schema.gql$
+        exclude: (^schema.gql$)|(/__generated__/)
       - id: check-yaml
         args:
           - --unsafe
@@ -33,6 +33,7 @@ repos:
     hooks:
       - id: editorconfig-checker
         args: ["-disable-indent-size"]
+        exclude: /__generated__/
 
   - repo: https://github.com/psf/black
     rev: 24.4.2
@@ -69,10 +70,21 @@ repos:
         pass_filenames: false
         language: system
         entry: "docker compose run --no-TTY --rm generate-graphql-schema"
+      - id: generate-graphql-ts
+        name: Generare graphql typescript
+        files: ^schema\.gql$
+        language: node
+        entry: yarn --cwd ./frontend codegen
+        additional_dependencies:
+          - "yarn"
+          - "@graphql-codegen/cli"
+          - "@graphql-codegen/client-preset"
+          - "@graphql-typed-document-node/core"
       - id: prettier
         name: prettier
         additional_dependencies:
-          - 'prettier@^3.3.3'
+          - "prettier@^3.3.3"
         entry: prettier --write --list-different --ignore-unknown
         language: node
         files: ^frontend/
+        exclude: /__generated__/

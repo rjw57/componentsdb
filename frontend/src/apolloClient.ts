@@ -1,5 +1,8 @@
 import { ApolloClient, InMemoryCache } from "@apollo/client";
 
+// A shared cache for all clients. Make sure to call client.resetStore() when changing user.
+const cache = new InMemoryCache();
+
 export interface MakeClientOptions {
   accessToken?: string;
 }
@@ -7,7 +10,7 @@ export interface MakeClientOptions {
 export const makeClient = (options?: MakeClientOptions) => {
   const { accessToken } = { ...options };
   return new ApolloClient({
-    cache: new InMemoryCache(),
+    cache,
     uri: "/graphql",
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
   });

@@ -1,64 +1,20 @@
 import React from "react";
 
-import { AuthErrorType } from "../__generated__/gql/graphql";
 import { useFederatedIdentitiyProviders, useCredentialsFromFederatedCredential } from "../hooks";
 import { unauthenticatedClient } from "../apolloClient";
+import { AuthContext, AuthContextValue } from "../contexts";
 
-/*
-    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID ?? ""}>
-      <App />
-    </GoogleOAuthProvider>
-  */
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID ?? "";
-
-interface Credentials {
-  accessToken?: string;
-  refreshToken?: string;
-  expiresAt?: Date;
-}
-
-interface User {
-  id: string;
-  displayName: string;
-  avatarUrl?: string | null;
-}
-
-interface AuthError {
-  error: AuthErrorType;
-  detail: string;
-}
-
-export interface AuthState {}
-
-export interface AuthContextValue {
-  credentials?: Credentials;
-  user?: User;
-
-  isLoading: boolean;
-
-  signInError?: AuthError;
-  signUpError?: AuthError;
-
-  google: {
-    clientId: string;
-    provider: string;
-  };
-
-  signUpWithFederatedCredential: (provider: string, credential: string) => void;
-  signInWithFederatedCredential: (provider: string, credential: string) => void;
-}
-
-export const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 export interface AuthProviderProps {
   children?: React.ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [credentials, setCredentials] = React.useState<Credentials | undefined>();
-  const [signInError, setSignInError] = React.useState<AuthError | undefined>();
-  const [signUpError, setSignUpError] = React.useState<AuthError | undefined>();
-  const [user, setUser] = React.useState<User | undefined>();
+  const [credentials, setCredentials] = React.useState<AuthContextValue["credentials"]>();
+  const [signInError, setSignInError] = React.useState<AuthContextValue["signInError"]>();
+  const [signUpError, setSignUpError] = React.useState<AuthContextValue["signUpError"]>();
+  const [user, setUser] = React.useState<AuthContextValue["user"]>();
 
   const { data: federatedIdentityProviders, loading: isLoadingFederatedIdentitiyProviders } =
     useFederatedIdentitiyProviders({
