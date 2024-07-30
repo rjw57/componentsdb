@@ -15,6 +15,7 @@ import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/
 const documents = {
     "\n  mutation credentialsFromFederatedCredential($input: CredentialsFromFederatedCredentialInput!) {\n    auth {\n      credentialsFromFederatedCredential(input: $input) {\n        __typename\n        ... on UserCredentials {\n          user {\n            id\n            displayName\n            avatarUrl\n          }\n          accessToken\n          refreshToken\n          expiresIn\n        }\n        ... on AuthError {\n          error\n          detail\n        }\n      }\n    }\n  }\n": types.CredentialsFromFederatedCredentialDocument,
     "\n  query federatedIdentityProviders {\n    auth {\n      federatedIdentityProviders {\n        name\n        issuer\n        audience\n      }\n    }\n  }\n": types.FederatedIdentityProvidersDocument,
+    "\n  mutation refreshCredentials($input: RefreshCredentialsInput!) {\n    auth {\n      refreshCredentials(input: $input) {\n        __typename\n        ... on UserCredentials {\n          user {\n            id\n            displayName\n            avatarUrl\n          }\n          accessToken\n          refreshToken\n          expiresIn\n        }\n        ... on AuthError {\n          error\n          detail\n        }\n      }\n    }\n  }\n": types.RefreshCredentialsDocument,
 };
 
 /**
@@ -39,6 +40,10 @@ export function graphql(source: "\n  mutation credentialsFromFederatedCredential
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query federatedIdentityProviders {\n    auth {\n      federatedIdentityProviders {\n        name\n        issuer\n        audience\n      }\n    }\n  }\n"): (typeof documents)["\n  query federatedIdentityProviders {\n    auth {\n      federatedIdentityProviders {\n        name\n        issuer\n        audience\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation refreshCredentials($input: RefreshCredentialsInput!) {\n    auth {\n      refreshCredentials(input: $input) {\n        __typename\n        ... on UserCredentials {\n          user {\n            id\n            displayName\n            avatarUrl\n          }\n          accessToken\n          refreshToken\n          expiresIn\n        }\n        ... on AuthError {\n          error\n          detail\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  mutation refreshCredentials($input: RefreshCredentialsInput!) {\n    auth {\n      refreshCredentials(input: $input) {\n        __typename\n        ... on UserCredentials {\n          user {\n            id\n            displayName\n            avatarUrl\n          }\n          accessToken\n          refreshToken\n          expiresIn\n        }\n        ... on AuthError {\n          error\n          detail\n        }\n      }\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

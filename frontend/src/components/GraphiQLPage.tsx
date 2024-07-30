@@ -13,18 +13,14 @@ export const GraphiQLPage: React.FC = () => {
     token: { borderRadiusLG },
   } = theme.useToken();
 
-  const auth = useAuth();
+  const { authenticatedFetch } = useAuth() ?? {};
 
   const fetcher = React.useMemo(() => {
     return createGraphiQLFetcher({
       url: "/graphql",
-      headers: {
-        ...(auth?.credentials?.accessToken
-          ? { Authorization: `Bearer ${auth.credentials.accessToken}` }
-          : {}),
-      },
+      fetch: authenticatedFetch,
     });
-  }, [auth?.credentials?.accessToken]);
+  }, [authenticatedFetch]);
 
   return (
     <Page>
