@@ -77,6 +77,7 @@ repos:
         entry: yarn --cwd ./frontend codegen
         additional_dependencies:
           - "yarn"
+          - "graphql"
           - "@graphql-codegen/cli"
           - "@graphql-codegen/client-preset"
           - "@graphql-typed-document-node/core"
