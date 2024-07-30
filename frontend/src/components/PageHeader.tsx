@@ -1,13 +1,30 @@
-import { Row, Col, Button, Space } from "antd";
+import { Row, Col, Button, Space, Menu, MenuProps, Typography } from "antd";
 
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../hooks";
+import { Link, useMatches } from "react-router-dom";
+
+type MenuItem = Required<MenuProps>["items"][number];
+
+const navMenuItems: MenuItem[] = [
+  {
+    label: <Link to="/">Index</Link>,
+    key: "index",
+  },
+  {
+    label: <Link to="/api">GraphQL</Link>,
+    key: "api",
+  },
+];
 
 export const PageHeader = () => {
   const auth = useAuth();
+  const routeMatches = useMatches();
+
   const user = auth?.user;
   const isSignedIn = !!user;
   const googleClientId = auth?.google?.clientId ?? "";
+  console.log("auth", isSignedIn, user);
 
   if (auth?.signUpError) {
     console.log("sign up error", auth?.signUpError);
@@ -17,14 +34,23 @@ export const PageHeader = () => {
   }
 
   return (
-    <Row>
-      <Col flex="auto" />
+    <Row gutter={16}>
+      <Col>
+        <Typography.Text strong>Components Database</Typography.Text>
+      </Col>
+      <Col flex="auto">
+        <Menu
+          mode="horizontal"
+          items={navMenuItems}
+          theme="dark"
+          selectedKeys={routeMatches.map(({ handle }) => `${handle}`)}
+        />
+      </Col>
       <Col>
         <GoogleOAuthProvider clientId={googleClientId}>
           <Space>
             {auth?.google && (
               <>
-                {auth?.user && <div>{auth.user.displayName}</div>}
                 <GoogleLogin
                   text="signin_with"
                   onSuccess={({ credential }) => {
@@ -41,14 +67,6 @@ export const PageHeader = () => {
                 />
               </>
             )}
-            <Button
-              size="large"
-              onClick={() => {
-                auth && auth.refreshCredentials();
-              }}
-            >
-              Refresh
-            </Button>
             {!isSignedIn && (
               <>
                 <Button size="large" type="text">
@@ -59,6 +77,7 @@ export const PageHeader = () => {
             )}
             {isSignedIn && (
               <>
+                {auth?.user && <div>{auth.user.displayName}</div>}
                 <Button
                   size="large"
                   onClick={() => {

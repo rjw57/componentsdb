@@ -1,8 +1,5 @@
 import { ApolloClient, HttpLink, InMemoryCache } from "@apollo/client";
 
-// A shared cache for all clients. Make sure to call client.resetStore() when changing user.
-const cache = new InMemoryCache();
-
 export interface MakeClientOptions {
   fetch?: (info: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
@@ -10,7 +7,7 @@ export interface MakeClientOptions {
 export const makeClient = (options?: MakeClientOptions) => {
   const { fetch } = { ...(options ?? {}) };
   return new ApolloClient({
-    cache,
+    cache: new InMemoryCache(),
     link: new HttpLink({
       uri: "/graphql",
       fetch,
@@ -18,4 +15,5 @@ export const makeClient = (options?: MakeClientOptions) => {
   });
 };
 
+// An unauthenticated Apollo client which uses an independent cached.
 export const unauthenticatedClient = makeClient();
