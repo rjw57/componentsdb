@@ -4,3 +4,4 @@ export * from "./useCredentialsFromFederatedCredential";
 export * from "./useFederatedIdentitiyProviders";
 export * from "./useRefreshCredentials";
 export * from "./useThemeConfig";
+export * from "./useSignInOrSignUpModal";

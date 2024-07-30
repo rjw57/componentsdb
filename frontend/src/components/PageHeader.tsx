@@ -1,7 +1,7 @@
 import { Row, Col, Button, Space, Menu, MenuProps, Typography } from "antd";
-
-import { useAuth } from "../hooks";
 import { Link, useMatches } from "react-router-dom";
+
+import { useAuth, useSignInOrSignUpModal } from "../hooks";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -22,6 +22,8 @@ export const PageHeader = () => {
 
   const user = auth?.user;
   const isSignedIn = !!user;
+
+  const [showSignInOrUp, signInOrUpContextHolder] = useSignInOrSignUpModal();
 
   return (
     <Row gutter={16}>
@@ -45,12 +47,26 @@ export const PageHeader = () => {
         <Space size="middle">
           {!isSignedIn && (
             <>
-              <Button size="large" type="text">
-                <Link to="/signin">Sign in</Link>
+              <Button
+                size="large"
+                type="text"
+                onClick={() => {
+                  auth && auth.dismissSignInError();
+                  showSignInOrUp("sign_in");
+                }}
+              >
+                Sign in
               </Button>
-              <Button size="large">
-                <Link to="/signup">Sign up</Link>
+              <Button
+                size="large"
+                onClick={() => {
+                  auth && auth.dismissSignUpError();
+                  showSignInOrUp("sign_up");
+                }}
+              >
+                Sign up
               </Button>
+              {signInOrUpContextHolder}
             </>
           )}
           {isSignedIn && (

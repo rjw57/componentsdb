@@ -2,6 +2,7 @@ import React from "react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { Divider, theme, Typography, Flex, Alert } from "antd";
 import { Link } from "react-router-dom";
+import { useResizeObserver } from "usehooks-ts";
 
 import { AuthContextError } from "../contexts";
 import { useAuth } from "../hooks";
@@ -40,6 +41,12 @@ const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
   const { token } = theme.useToken();
   const auth = useAuth();
 
+  // Since the Google sign in button size needs to be set explicitly, we use a horrible
+  // ResizeObserver hack to compute the width.
+  const googleHackRef = React.useRef<HTMLDivElement>(null);
+  const { width: googleButtonWidth = 50 } = useResizeObserver({ ref: googleHackRef });
+  console.log(googleButtonWidth);
+
   const isGoogleSignInSupported = !!auth?.google;
 
   const describeError = ({ error, detail }: AuthContextError) =>
@@ -47,7 +54,7 @@ const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
 
   return (
     <Flex vertical gap={4 * token.sizeUnit}>
-      <div style={{ textAlign: "center" }}>
+      <div style={{ textAlign: "center" }} ref={googleHackRef}>
         {type === "sign_in" && (
           <>
             <Typography.Title>Sign in</Typography.Title>
@@ -81,14 +88,14 @@ const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
           onClose={auth.dismissSignUpError}
         />
       )}
-      <Flex vertical gap={4 * token.sizeUnit} style={{ marginTop: token.marginLG }}>
+      <Flex vertical align="center" gap={4 * token.sizeUnit} style={{ marginTop: token.margin }}>
         {isGoogleSignInSupported && (
           <GoogleLogin
             theme="outline"
             size="large"
             text={type === "sign_in" ? "continue_with" : "signup_with"}
             context={type === "sign_in" ? "signin" : "signup"}
-            width={Math.floor(0.8 * token.screenSM - token.paddingLG * 2)}
+            width={googleButtonWidth}
             onSuccess={({ credential }) => {
               if (!credential || !auth.google) {
                 return;

@@ -13,28 +13,27 @@ export const SignInOrUpPage: React.FC<
 
   return (
     <DefaultPage>
-      <Flex vertical style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}>
-        <div style={{ flexGrow: 1 }} />
-        <div
-          style={{
-            maxWidth: 0.8 * token.screenSM,
-            marginLeft: "auto",
-            marginRight: "auto",
-            border: `1px solid ${token.colorBorder}`,
-            borderRadius: token.borderRadiusLG,
-            backgroundColor: token.colorBgElevated,
-            padding: token.paddingLG,
+      <div
+        style={{
+          maxWidth: 0.8 * token.screenXS,
+          marginLeft: "auto",
+          marginRight: "auto",
+          border: `1px solid ${token.colorBorder}`,
+          borderRadius: token.borderRadiusLG,
+          backgroundColor: token.colorBgElevated,
+          paddingTop: token.paddingContentVerticalLG,
+          paddingBottom: token.paddingContentVerticalLG,
+          paddingRight: token.paddingContentHorizontalLG,
+          paddingLeft: token.paddingContentHorizontalLG,
+        }}
+      >
+        <SignInOrUpForm
+          onSuccess={() => {
+            navigate("/");
           }}
-        >
-          <SignInOrUpForm
-            onSuccess={() => {
-              navigate("/");
-            }}
-            {...props}
-          />
-        </div>
-        <div style={{ flexGrow: 3 }} />
-      </Flex>
+          {...props}
+        />
+      </div>
     </DefaultPage>
   );
 };
