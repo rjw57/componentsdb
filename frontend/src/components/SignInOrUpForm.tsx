@@ -63,7 +63,7 @@ const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
           </>
         )}
       </div>
-      {auth?.signInError && (
+      {type === "sign_in" && auth?.signInError && (
         <Alert
           message="There was a problem signing you in"
           description={describeError(auth.signInError)}
@@ -72,7 +72,7 @@ const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
           onClose={auth.dismissSignInError}
         />
       )}
-      {auth?.signUpError && (
+      {type === "sign_up" && auth?.signUpError && (
         <Alert
           message="There was a problem signing you up"
           description={describeError(auth.signUpError)}
