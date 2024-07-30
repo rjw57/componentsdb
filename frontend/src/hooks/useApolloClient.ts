@@ -4,15 +4,12 @@ import { useAuth } from "./useAuth";
 import { makeClient } from "../apolloClient";
 
 export const useApolloClient = () => {
-  const { user, credentials } = useAuth() ?? {};
+  const { user, authenticatedFetch } = useAuth() ?? {};
 
-  // The Apollo client is re-created when the access token changes.
+  // The Apollo client is re-created when the authenticated fetch function changes.
   const client = React.useMemo(
-    () =>
-      makeClient({
-        accessToken: credentials?.accessToken,
-      }),
-    [credentials?.accessToken],
+    () => makeClient({ fetch: authenticatedFetch }),
+    [authenticatedFetch],
   );
 
   // The client's cache is reset if the user changes.

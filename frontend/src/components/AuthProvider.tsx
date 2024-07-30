@@ -32,22 +32,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [credentialsPromise, setCredentialsPromise] =
     React.useState<Promise<CredentialsResponse>>();
 
-  const [credentials, setCredentials] = React.useState<AuthContextValue["credentials"]>();
+  // State which is set by the credentials promise.
+  const [credentialsResponse, setCredentialsResponse] = React.useState<CredentialsResponse>();
+  const { credentials, user } = credentialsResponse ?? {};
+
+  // Errors which may occur during sign-in or sign-up.
   const [signInError, setSignInError] = React.useState<AuthContextValue["signInError"]>();
   const [signUpError, setSignUpError] = React.useState<AuthContextValue["signUpError"]>();
-  const [user, setUser] = React.useState<AuthContextValue["user"]>();
 
-  // Set expiresIn to null to disable refresh timeout.
+  // Set expiresIn to null to disable refresh timeout, otherwise set to a number to schedule a call
+  // to refreshCredentials().
   const [expiresInMs, setExpiresInMs] = React.useState<number | null>(null);
   useTimeout(() => {
     refreshCredentials();
   }, expiresInMs);
 
+  // GraphQL queries and mutations. All of these use an unauthenticated client explicitly since they
+  // are used to obtain authentication credentials.
   const { data: federatedIdentityProviders, loading: isLoadingFederatedIdentitiyProviders } =
     useFederatedIdentitiyProviders({
       client: unauthenticatedClient,
     });
 
+  const [credentialsFromFederatedCredential, { loading: isLoadingCredentials }] =
+    useCredentialsFromFederatedCredential({
+      client: unauthenticatedClient,
+    });
+
+  const [refreshCredentialsMutation, { loading: isRefreshingCredentials }] = useRefreshCredentials({
+    client: unauthenticatedClient,
+  });
+
+  // Determine which federated identity provider name corresponds to our Google client if. (If any.)
   const googleProvider = React.useMemo(() => {
     let provider;
     (federatedIdentityProviders?.auth.federatedIdentityProviders ?? []).forEach(
@@ -60,15 +76,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return provider;
   }, [federatedIdentityProviders]);
 
-  const [credentialsFromFederatedCredential, { loading: isLoadingCredentials }] =
-    useCredentialsFromFederatedCredential({
-      client: unauthenticatedClient,
-    });
+  // Reset the state to that of an unauthenticated user.
+  const signOut = () => {
+    setCredentialsPromise(undefined);
+    setCredentialsResponse(undefined);
+    setExpiresInMs(null);
+  };
 
-  const [refreshCredentialsMutation, { loading: isRefreshingCredentials }] = useRefreshCredentials({
-    client: unauthenticatedClient,
-  });
-
+  // Called when we get a result from credentialsFromFederatedCredential or refreshCredentials to
+  // update the authentication state.
   const handleAuthResult = (result: {
     user: { id: string; displayName: string; avatarUrl?: string | null };
     accessToken: string;
@@ -81,35 +97,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       refreshToken,
       expiresIn,
     } = result;
+
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + expiresIn);
-    const credentials = {
-      accessToken,
-      refreshToken,
-      expiresAt,
-    };
-    const user = {
-      id,
-      displayName,
-      avatarUrl,
+
+    const credentialsResponse = {
+      credentials: {
+        accessToken,
+        refreshToken,
+        expiresAt,
+      },
+      user: {
+        id,
+        displayName,
+        avatarUrl,
+      },
     };
 
-    setCredentials(credentials);
-    setUser(user);
+    setCredentialsResponse(credentialsResponse);
 
     // Schedule credential reset up to a minute before expected expiry to ensure we refresh in good
     // time. Note that it is safe for us to miss the refresh window because authenticatedFetch()
     // will refresh credentials "just in time" if necessary.
     setExpiresInMs(Math.max(expiresIn - 60, 60) * 1e3);
 
-    return { credentials, user };
-  };
-
-  const signOut = () => {
-    setCredentialsPromise(undefined);
-    setUser(undefined);
-    setCredentials(undefined);
-    setExpiresInMs(null);
+    return credentialsResponse;
   };
 
   const refreshCredentials = (
@@ -171,12 +183,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     options?: AuthContextCredentialFetchOptions,
   ): Promise<CredentialsResponse> => {
     const { onError, onSuccess } = options ?? {};
+
     signOut();
+
     if (isNewUser) {
       setSignUpError(undefined);
     } else {
       setSignInError(undefined);
     }
+
     // Update the credentials promise.
     const credentialsPromise = new Promise<CredentialsResponse>((resolve, reject) => {
       credentialsFromFederatedCredential({
@@ -212,7 +227,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       });
     });
+
     setCredentialsPromise(credentialsPromise);
+
     return credentialsPromise;
   };
 
@@ -239,7 +256,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Otherwise we need to try and kick off a refresh. (Or wait for the one in-flight.)
     const credentialsResponse = await (credentialsPromise || refreshCredentials());
 
-    // Retry the request with the new credentials.
+    // Retry the request with the new credentials. This time any 403 errors will be reported back to
+    // the caller.
     return await fetch(input, {
       ...init,
       headers: {
@@ -270,6 +288,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
           : {}),
 
+        signOut,
         signInWithFederatedCredential: (
           provider: string,
           credential: string,
@@ -284,7 +303,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ) => {
           signInOrSignUpWithFederatedCredentials(provider, credential, true, options);
         },
-        signOut,
         refreshCredentials,
         authenticatedFetch,
       }}
