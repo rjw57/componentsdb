@@ -24,7 +24,11 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({
       key: "user",
       label: (
         <Space>
-          {(avatarLabel || avatarUrl) && <Avatar src={avatarUrl}>{avatarLabel}</Avatar>}
+          {(avatarLabel || avatarUrl) && (
+            <Avatar src={avatarUrl ?? <img src={avatarUrl} alt={`${avatarLabel}`} />}>
+              {avatarLabel}
+            </Avatar>
+          )}
           {displayName}
           <DownOutlined />
         </Space>
