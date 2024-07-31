@@ -6,6 +6,7 @@ import { theme } from "antd";
 
 import { DefaultPage } from ".";
 import { useAuth } from "../hooks";
+import { graphQLUrl } from "../config";
 
 export const GraphiQLPage: React.FC = () => {
   const { authenticatedFetch } = useAuth() ?? {};
@@ -13,7 +14,7 @@ export const GraphiQLPage: React.FC = () => {
 
   const fetcher = React.useMemo(() => {
     return createGraphiQLFetcher({
-      url: "/graphql",
+      url: graphQLUrl,
       fetch: authenticatedFetch,
     });
   }, [authenticatedFetch]);
