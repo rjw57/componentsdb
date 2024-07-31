@@ -85,7 +85,7 @@ services:
         WORKDIR /usr/src/app/
         RUN pip install poetry
         COPY poetry.lock pyproject.toml /usr/src/app/
-        RUN poetry install
+        RUN poetry install --no-root
       context: ./backend
     entrypoint: ["poetry", "run", "poe", "test"]
     volumes:
@@ -258,7 +258,7 @@ services:
         WORKDIR /usr/src/app/backend
         RUN pip install poetry
         COPY poetry.lock pyproject.toml /usr/src/app/backend
-        RUN poetry install
+        RUN poetry install --no-root
       context: ./backend
     entrypoint: ["poetry", "run"]
     command:
