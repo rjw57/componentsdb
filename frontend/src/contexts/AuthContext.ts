@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ApolloError } from "@apollo/client";
+import type { ApolloError } from "@apollo/client";
 import { AuthErrorType } from "../__generated__/gql/graphql";
 
 export interface AuthContextCredentials {

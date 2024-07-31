@@ -20,8 +20,8 @@ const navMenuItems: MenuItem[] = [
 
 export const PageHeader = () => {
   const auth = useAuth();
-  const routeMatches = useMatches();
   const { token } = theme.useToken();
+  const routeMatches = useMatches();
 
   const user = auth?.user;
   const isSignedIn = !!user;
