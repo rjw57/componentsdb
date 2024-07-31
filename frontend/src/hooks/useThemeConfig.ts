@@ -1,5 +1,6 @@
 import { useMediaQuery } from "usehooks-ts";
-import { ThemeConfig, theme } from "antd";
+import { theme } from "antd";
+import type { ThemeConfig } from "antd";
 
 export const useThemeConfig = (): ThemeConfig => {
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme:dark)");

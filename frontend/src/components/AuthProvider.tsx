@@ -8,15 +8,14 @@ import {
   useRefreshCredentials,
 } from "../hooks";
 import { unauthenticatedClient } from "../apolloClient";
-import {
-  AuthContext,
+import { AuthContext } from "../contexts";
+import type {
   AuthContextValue,
   AuthContextCredentialFetchOptions,
   AuthContextCredentials,
   AuthContextUser,
 } from "../contexts";
-
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID ?? "";
+import { googleClientId } from "../config";
 
 export interface AuthProviderProps {
   children?: React.ReactNode;
@@ -68,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     let provider;
     (federatedIdentityProviders?.auth.federatedIdentityProviders ?? []).forEach(
       ({ name, issuer, audience }) => {
-        if (audience === GOOGLE_CLIENT_ID && issuer === "https://accounts.google.com") {
+        if (audience === googleClientId && issuer === "https://accounts.google.com") {
           provider = name;
         }
       },
@@ -287,7 +286,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ...(googleProvider
           ? {
               google: {
-                clientId: GOOGLE_CLIENT_ID,
+                clientId: googleClientId,
                 provider: googleProvider,
               },
             }

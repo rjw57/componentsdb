@@ -1,4 +1,5 @@
-import { theme, Row, Col, Button, Space, Menu, MenuProps, Typography } from "antd";
+import { theme, Row, Col, Button, Space, Menu, Typography } from "antd";
+import type { MenuProps } from "antd";
 import { Link, useMatches } from "react-router-dom";
 
 import { useAuth, useSignInOrSignUpModal } from "../hooks";

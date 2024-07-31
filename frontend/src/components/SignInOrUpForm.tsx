@@ -3,7 +3,7 @@ import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { Divider, theme, Typography, Flex, Alert } from "antd";
 import { useResizeObserver } from "usehooks-ts";
 
-import { AuthContextError } from "../contexts";
+import type { AuthContextError } from "../contexts";
 import { useAuth } from "../hooks";
 import { AuthErrorType } from "../__generated__/gql/graphql";
 

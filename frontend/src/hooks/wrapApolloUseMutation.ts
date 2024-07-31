@@ -1,5 +1,6 @@
-import { MutationHookOptions, useMutation, OperationVariables } from "@apollo/client";
-import { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import { useMutation } from "@apollo/client";
+import type { MutationHookOptions, OperationVariables } from "@apollo/client";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 
 export const wrapApolloUseMutation =
   <TData, TVariables extends OperationVariables>(query: TypedDocumentNode<TData, TVariables>) =>

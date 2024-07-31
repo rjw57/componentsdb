@@ -5,14 +5,16 @@ import { App as AntApp } from "antd";
 import router from "./router";
 import { AuthProvider, ApolloProvider, AntConfigProvider } from "./components";
 
-export const App = () => (
+interface AppProps {
+  children?: React.ReactNode;
+}
+
+export const App: React.FC<AppProps> = ({ children }) => (
   <React.StrictMode>
     <AuthProvider>
       <ApolloProvider>
         <AntConfigProvider>
-          <AntApp>
-            <RouterProvider router={router} />
-          </AntApp>
+          <AntApp>{children ?? <RouterProvider router={router} />}</AntApp>
         </AntConfigProvider>
       </ApolloProvider>
     </AuthProvider>
