@@ -13,8 +13,12 @@ An experimental database for storing electronics components.
     task
     ```
 
-The application is available at http://localhost:3000/. The backend is available
-at http://localhost:8000/.
+The application is available at http://localhost:3000/ proxied via traefik to
+allow requests to be passed to the backend. The backend is available at
+http://localhost:8000/ and the frontend dev server itself is available at
+http://localhost:3001/ should you need it.
+
+The traefik dashboard is at http://localhost:8080/
 
 ## Tasks
 

@@ -161,16 +161,31 @@ services:
       context: ./frontend/
     command: ["start", "--host", "0.0.0.0", "--port", "3000"]
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:3000/"]
+      test: ["CMD", "curl", "--fail", "http://localhost:3000/healthy"]
       interval: 30s
       retries: 5
       start_period: 120s
       start_interval: 1s
     ports:
-      - 3000:3000
+      - 3001:3000
     volumes:
       - ./frontend/src:/usr/src/app/src:ro
     depends_on:
+      backend-dev:
+        condition: service_healthy
+
+  traefik-dev:
+    profiles:
+      - dev
+    image: traefik:v3.1
+    ports:
+      - 3000:80
+      - 8080:8080
+    volumes:
+      - ./compose/traefik-config/dev.yaml:/etc/traefik/traefik.yaml:ro
+    depends_on:
+      frontend-dev:
+        condition: service_healthy
       backend-dev:
         condition: service_healthy
 
@@ -194,7 +209,7 @@ services:
         "export-schema",
         "componentsdb.graphql:schema",
         "--output",
-        "/usr/src/app/schema.gql",
+        "/usr/src/app/frontend/schema.gql",
       ]
     volumes:
       - ./:/usr/src/app

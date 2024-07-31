@@ -88,4 +88,4 @@ repos:
         entry: prettier --write --list-different --ignore-unknown
         language: node
         files: ^frontend/
-        exclude: /__generated__/
+        exclude: /__generated__/|schema.gql

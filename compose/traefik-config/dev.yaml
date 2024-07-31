@@ -1,0 +1,49 @@
+accessLog: {}
+
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+   address: ":80"
+  traefik:
+   address: ":8080"
+
+# Somewhat circularly, use the file provider to load details from this configuration file.
+providers:
+  file:
+    filename: /etc/traefik/traefik.yaml
+    watch: true
+
+http:
+  routers:
+    traefik:
+      rule: "PathPrefix(`/`)"
+      service: api@internal
+      entryPoints:
+        - "traefik"
+    backend:
+      rule: "Path(`/graphql`)"
+      service: backend
+      priority: 20
+      entryPoints:
+        - "web"
+    frontend:
+      rule: "PathPrefix(`/`)"
+      service: frontend
+      priority: 10
+      entryPoints:
+        - "web"
+  services:
+    backend:
+      loadBalancer:
+        servers:
+          - url: "http://backend-dev:8000/"
+        healthCheck:
+          path: /healthy
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://frontend-dev:3000/"
+        healthCheck:
+          path: /healthy
