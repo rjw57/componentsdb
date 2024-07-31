@@ -15,15 +15,11 @@ enum AuthErrorType {
 
 type AuthMutations {
   credentialsFromFederatedCredential(
-    """
-    Input data for `credentialsFromFederatedCredential` mutation
-    """
+    """Input data for `credentialsFromFederatedCredential` mutation"""
     input: CredentialsFromFederatedCredentialInput!
   ): AuthCredentialsResponse!
   refreshCredentials(
-    """
-    Input data for `refreshCredentials` mutation
-    """
+    """Input data for `refreshCredentials` mutation"""
     input: RefreshCredentialsInput!
   ): AuthCredentialsResponse!
 }
