@@ -6,5 +6,5 @@ COPY ./ ./
 RUN yarn build
 
 FROM nginx:1 AS server
-RUN echo 'absolute_redirect off;' >/etc/nginx/conf.d/relative-redirects.conf
+COPY ./docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /usr/src/dist/ /usr/share/nginx/html/
