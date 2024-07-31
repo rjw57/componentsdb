@@ -105,15 +105,15 @@ services:
       dockerfile_inline: |
         FROM python:3.12
         WORKDIR /usr/src/app/
-        RUN pip install poetry
+        RUN pip install poetry~=1.8
         COPY poetry.lock pyproject.toml /usr/src/app/
-        RUN poetry install
+        RUN poetry install --no-root
         ENTRYPOINT ["poetry", "run", "python", "-m", "componentsdb.cli"]
         EXPOSE 8000
       context: ./backend
     volumes:
       - ./backend:/usr/src/app:ro
-    environment:
+    environment: &backend-env
       SQLALCHEMY_DB_URL: postgresql+asyncpg://components-user:components-pass@db/components
       ACCESS_TOKEN_LIFETIME: "120"  # a short period so we stress-test refresh logic
       FEDERATED_IDENTITY_PROVIDERS: |
@@ -170,9 +170,6 @@ services:
       - 3001:3000
     volumes:
       - ./frontend/src:/usr/src/app/src:ro
-    depends_on:
-      backend-dev:
-        condition: service_healthy
 
   traefik-dev:
     profiles:
@@ -181,12 +178,73 @@ services:
     ports:
       - 3000:80
       - 8080:8080
+    healthcheck: &traefik-healthcheck
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 30s
+      retries: 5
+      start_period: 120s
+      start_interval: 1s
     volumes:
       - ./compose/traefik-config/dev.yaml:/etc/traefik/traefik.yaml:ro
     depends_on:
       frontend-dev:
         condition: service_healthy
       backend-dev:
+        condition: service_healthy
+
+  ########## PRODUCTION-LIKE ENCIRONMENT ##########
+
+  backend-prod:
+    profiles:
+      - prod
+    build:
+      dockerfile: Dockerfile
+      context: ./backend
+    command: ["server", "run", "--host", "0.0.0.0", "--port", "8000"]
+    environment: *backend-env
+    ports:
+      - 8000:8000
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthy"]
+      interval: 30s
+      retries: 5
+      start_period: 120s
+      start_interval: 1s
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+
+  frontend-prod:
+    profiles:
+      - prod
+    build:
+      dockerfile: Dockerfile
+      context: ./frontend
+      target: server
+    ports:
+      - 3001:80
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost/healthy"]
+      interval: 30s
+      retries: 5
+      start_period: 120s
+      start_interval: 1s
+
+  traefik-prod:
+    profiles:
+      - prod
+    image: traefik:v3.1
+    ports:
+      - 3000:80
+    volumes:
+      - ./compose/traefik-config/prod.yaml:/etc/traefik/traefik.yaml:ro
+    healthcheck: *traefik-healthcheck
+    depends_on:
+      frontend-prod:
+        condition: service_healthy
+      backend-prod:
         condition: service_healthy
 
   ########## UTILITIES ##########

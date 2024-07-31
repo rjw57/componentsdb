@@ -13,21 +13,25 @@ tasks:
       - task: compose-pull
       - task: compose-build
   up:
-    desc: "start application"
+    desc: "start application for local development"
     cmds:
       - docker compose --profile=dev up --wait {{.CLI_ARGS}}
   up-prod:
-    desc: "start application"
+    desc: "start application in a prodution-like environment"
     cmds:
-      - docker compose --profile=prod up --wait {{.CLI_ARGS}}
+      - docker compose --profile=prod up --build --wait {{.CLI_ARGS}}
   backend-cli:
     desc: "run the backend CLI management tool"
     cmds:
       - docker compose run --rm backend-cli {{.CLI_ARGS}}
   logs:
-    desc: "show frontend and backend logs"
+    desc: "show frontend and backend logs for local development services"
     cmds:
       - docker compose --profile=dev logs -f backend-dev frontend-dev
+  logs-prod:
+    desc: "show frontend and backend logs for production-like services"
+    cmds:
+      - docker compose --profile=prod logs -f backend-prod frontend-prod
   down:
     desc: "stop running containers"
     cmds:

@@ -1,8 +1,5 @@
 accessLog: {}
 
-api:
-  dashboard: true
-
 ping: {}
 
 entryPoints:
@@ -15,15 +12,9 @@ entryPoints:
 providers:
   file:
     filename: /etc/traefik/traefik.yaml
-    watch: true
 
 http:
   routers:
-    traefik:
-      rule: "PathPrefix(`/`)"
-      service: api@internal
-      entryPoints:
-        - "traefik"
     backend:
       rule: "Path(`/graphql`)"
       service: backend
@@ -40,12 +31,12 @@ http:
     backend:
       loadBalancer:
         servers:
-          - url: "http://backend-dev:8000/"
+          - url: "http://backend-prod:8000/"
         healthCheck:
           path: /healthy
     frontend:
       loadBalancer:
         servers:
-          - url: "http://frontend-dev:3000/"
+          - url: "http://frontend-prod/"
         healthCheck:
           path: /healthy

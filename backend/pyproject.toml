@@ -3,7 +3,6 @@ name = "componentsdb"
 version = "0.1.0"
 description = "A web application implementing an electronic components database"
 authors = ["Rich Wareham <rich.componentsdb@richwareham.com>"]
-readme = "../README.md"
 packages = [{include = "componentsdb"}]
 
 [tool.poetry.scripts]
