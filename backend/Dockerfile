@@ -1,5 +1,5 @@
-FROM python:3.12
-WORKDIR /usr/src
+FROM python:3.12-slim
+WORKDIR /usr/src/app/
 RUN pip install poetry~=1.8 poetry-plugin-export~=1.8
 COPY poetry.lock pyproject.toml .
 RUN \

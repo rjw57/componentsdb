@@ -1,5 +1,8 @@
+import sys
 from typing import Annotated
+from urllib.parse import quote
 
+import requests
 import structlog
 import typer
 import uvicorn
@@ -99,3 +102,20 @@ def dev(
     local network.
     """
     run(host=host, port=port, reload=True, json_logging=False)
+
+
+@app.command()
+def healthcheck(
+    host: Annotated[str, typer.Option(envvar="HOST")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(envvar="PORT")] = 8000,
+):
+    """
+    Check if the server is running.
+
+    Exits with a non-zero exit code if there is an error connecting to the server on the host and
+    port specified. Exits with a zero exit code otherwise.
+    """
+    url = f"http://{quote(host)}:{port}/healthy"
+    r = requests.get(url, timeout=1)
+    if r.status_code >= 400:
+        sys.exit(1)

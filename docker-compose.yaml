@@ -50,7 +50,7 @@ services:
       - tool
     build:
       dockerfile_inline: |
-        FROM python:3.12
+        FROM python:3.12-slim
         RUN pip install alembic~=1.13 asyncpg==0.29 black~=23.1
     environment:
       ALEMBIC_SQLALCHEMY_URL: postgresql+asyncpg://postgres:postgres-pass@db/components
@@ -81,7 +81,7 @@ services:
       - test
     build:
       dockerfile_inline: |
-        FROM python:3.12
+        FROM python:3.12-slim
         WORKDIR /usr/src/app/
         RUN pip install poetry
         COPY poetry.lock pyproject.toml /usr/src/app/
@@ -103,19 +103,24 @@ services:
       - tool
     build:
       dockerfile_inline: |
-        FROM python:3.12
+        FROM python:3.12-slim
         WORKDIR /usr/src/app/
-        RUN pip install poetry~=1.8
+        RUN pip install poetry~=1.8 poetry-plugin-export~=1.8
         COPY poetry.lock pyproject.toml /usr/src/app/
-        RUN poetry install --no-root
-        ENTRYPOINT ["poetry", "run", "python", "-m", "componentsdb.cli"]
+        RUN \
+          poetry export -f requirements.txt --output /tmp/requirements.txt && \
+          pip install -r /tmp/requirements.txt && \
+          rm /tmp/requirements.txt
+        COPY ./ ./
+        RUN pip install -e .
+        ENTRYPOINT ["componentsdb"]
         EXPOSE 8000
       context: ./backend
     volumes:
       - ./backend:/usr/src/app:ro
     environment: &backend-env
       SQLALCHEMY_DB_URL: postgresql+asyncpg://components-user:components-pass@db/components
-      ACCESS_TOKEN_LIFETIME: "120"  # a short period so we stress-test refresh logic
+      ACCESS_TOKEN_LIFETIME: "120" # a short period so we stress-test refresh logic
       FEDERATED_IDENTITY_PROVIDERS: |
         {
           "google": {
@@ -141,7 +146,17 @@ services:
     ports:
       - 8000:8000
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthy"]
+      test:
+        [
+          "CMD",
+          "componentsdb",
+          "server",
+          "healthcheck",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+        ]
       interval: 30s
       retries: 5
       start_period: 120s
@@ -205,7 +220,17 @@ services:
     ports:
       - 8000:8000
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8000/healthy"]
+      test:
+        [
+          "CMD",
+          "componentsdb",
+          "server",
+          "healthcheck",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+        ]
       interval: 30s
       retries: 5
       start_period: 120s
@@ -254,7 +279,7 @@ services:
       - tool
     build:
       dockerfile_inline: |
-        FROM python:3.12
+        FROM python:3.12-slim
         WORKDIR /usr/src/app/backend
         RUN pip install poetry
         COPY poetry.lock pyproject.toml /usr/src/app/backend
