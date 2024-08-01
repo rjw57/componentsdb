@@ -27,7 +27,7 @@ repos:
         args: ["-C", "backend"]
         files: ^backend/pyproject\.toml$
       - id: poetry-lock
-        args: ["-C", "backend"]
+        args: ["-C", "backend", "--no-update"]
         files: ^backend/pyproject\.toml$
 
   - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
