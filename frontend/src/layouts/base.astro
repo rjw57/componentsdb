@@ -1,7 +1,10 @@
 ---
+import { ThemeModeScript } from "flowbite-react";
+import NavBar from "../components/NavBar.astro";
+
 const { title } = Astro.props;
-const baseUrl = import.meta.env.BASE_URL;
 ---
+
 <!doctype html>
 <html lang="en">
   <head>
@@ -9,10 +12,15 @@ const baseUrl = import.meta.env.BASE_URL;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <title>{title ?? "Components Database"}</title>
-    <link rel="stylesheet" href={`${baseUrl}base.css`} />
+    <ThemeModeScript />
   </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <slot />
+  <body
+    class="bg-white text-gray-600 antialiased dark:bg-gray-900 dark:text-gray-400"
+  >
+    <NavBar />
+    <main class="h-auto p-4">
+      <noscript> You need to enable JavaScript to run this app. </noscript>
+      <slot />
+    </main>
   </body>
 </html>

@@ -11,6 +11,7 @@ const refreshCredentials = graphql(`
             id
             displayName
             avatarUrl
+            email
           }
           accessToken
           refreshToken

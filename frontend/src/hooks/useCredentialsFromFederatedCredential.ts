@@ -11,6 +11,7 @@ const credentialsFromFederatedCredential = graphql(`
             id
             displayName
             avatarUrl
+            email
           }
           accessToken
           refreshToken

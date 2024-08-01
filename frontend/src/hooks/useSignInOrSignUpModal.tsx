@@ -1,32 +1,32 @@
-import { theme, Modal } from "antd";
+import React from "react";
+import { Modal } from "flowbite-react";
 
-import { SignInOrUpForm } from "../components";
+import SignInOrUpForm from "../components/SignInOrUpForm";
 
-type UseSignInOrSignUpModalReturnValue = [
-  (type: "sign_in" | "sign_up") => void,
-  ReturnType<typeof Modal.useModal>[1],
-];
+type UseSignInOrSignUpModalReturnValue = [(type: "sign_in" | "sign_up") => void, React.ReactNode];
 
 export const useSignInOrSignUpModal = (): UseSignInOrSignUpModalReturnValue => {
-  const [modal, contextHolder] = Modal.useModal();
-  const { token } = theme.useToken();
+  const [isModalOpen, setIsModalOpen] = React.useState<boolean>(false);
+  const [type, setType] = React.useState<"sign_in" | "sign_up">("sign_in");
 
   const showModal = (type: "sign_in" | "sign_up") => {
-    const newModal = modal.info({
-      icon: <></>,
-      closable: true,
-      footer: null,
-      width: Math.floor(0.8 * token.screenXS),
-      content: (
+    setType(type);
+    setIsModalOpen(true);
+  };
+
+  const contextHolder = (
+    <Modal size="sm" show={isModalOpen} onClose={() => setIsModalOpen(false)} popup>
+      <Modal.Header />
+      <Modal.Body>
         <SignInOrUpForm
           initialType={type}
           onSuccess={() => {
-            newModal.destroy();
+            setIsModalOpen(false);
           }}
         />
-      ),
-    });
-  };
+      </Modal.Body>
+    </Modal>
+  );
 
   return [showModal, contextHolder];
 };

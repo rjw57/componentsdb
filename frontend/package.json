@@ -8,18 +8,25 @@
     "@apollo/client": "^3.11.1",
     "@astrojs/check": "^0.8.3",
     "@astrojs/react": "^3.6.1",
+    "@astrojs/tailwind": "^5.1.0",
     "@graphql-typed-document-node/core": "^3.2.0",
+    "@nanostores/persistent": "^0.10.1",
+    "@nanostores/react": "^0.7.2",
     "@react-oauth/google": "^0.12.1",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "antd": "^5.19.3",
     "astro": "^4.12.3",
+    "flowbite": "^2.4.1",
+    "flowbite-react": "^0.10.1",
     "graphiql": "^3.3.2",
     "graphql": "^16.9.0",
+    "nanostores": "^0.10.3",
+    "next": "^14.2.5",
     "oidc-client-ts": "^3.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.25.1",
+    "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4",
     "usehooks-ts": "^3.1.0",
     "web-vitals": "^4.2.2"
@@ -48,6 +55,7 @@
   "devDependencies": {
     "@graphql-codegen/cli": "^5.0.2",
     "@graphql-codegen/client-preset": "^4.3.3",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "prettier-plugin-astro": "^0.14.1"
   }
 }

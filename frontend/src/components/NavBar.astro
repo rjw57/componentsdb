@@ -1,0 +1,10 @@
+---
+import NavbarContainer from "./NavbarContainer";
+import NavbarSignIn from "./NavbarSignIn";
+import NavbarAvatar from "./NavbarAvatar";
+---
+
+<NavbarContainer client:load pathname={Astro.url.pathname}>
+  <NavbarSignIn slot="signInContent" client:only="react" />
+  <NavbarAvatar slot="avatarContent" client:only="react" />
+</NavbarContainer>

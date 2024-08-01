@@ -1,175 +1,156 @@
 import React from "react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
-import { Divider, theme, Typography, Flex, Alert } from "antd";
 import { useResizeObserver } from "usehooks-ts";
+import { Alert, Button } from "flowbite-react";
 
-import type { AuthContextError } from "../contexts";
-import { useAuth } from "../hooks";
 import { AuthErrorType } from "../__generated__/gql/graphql";
+import useSignIn from "../hooks/useSignIn";
+import type { SignInError } from "../hooks/useSignIn";
+import { googleClientId } from "../config";
 
 export interface SignInOrUpFormProps {
   initialType?: "sign_in" | "sign_up";
   onSuccess?: () => void;
 }
 
-const SignInOrUpFormContent: React.FC<SignInOrUpFormProps> = ({
+export const SignInOrUpForm: React.FC<SignInOrUpFormProps> = ({
   initialType = "sign_in",
   onSuccess = () => {},
 }) => {
-  const [type, underlyingSetType] = React.useState<"sign_in" | "sign_up">(initialType);
-  const { token } = theme.useToken();
-  const auth = useAuth();
-
-  const setType = (type: "sign_in" | "sign_up") => {
-    auth && auth.dismissSignUpError();
-    auth && auth.dismissSignInError();
-    underlyingSetType(type);
-  };
+  const [signInError, setSignInError] = React.useState<SignInError | null>(null);
+  const [type, setType] = React.useState<"sign_in" | "sign_up">(initialType);
+  const { googleProviderName, signInWithFederatedCredential } = useSignIn();
 
   // Since the Google sign in button size needs to be set explicitly, we use a horrible
   // ResizeObserver hack to compute the width.
   const googleHackRef = React.useRef<HTMLDivElement>(null);
   const { width: googleButtonWidth = 50 } = useResizeObserver({ ref: googleHackRef });
 
-  const isGoogleSignInSupported = !!auth?.google;
-
   const errorDescriptions = new Map<AuthErrorType, React.ReactNode>([
     [
       AuthErrorType.UserAlreadySignedUp,
       <>
-        A user has already signed up with that account. You can try{" "}
-        <Typography.Link
+        <div className="mb-4">A user has already signed up with that account.</div>
+        <Button
+          size="xs"
           onClick={() => {
+            setSignInError(null);
             setType("sign_in");
           }}
         >
-          signing in
-        </Typography.Link>{" "}
-        instead.
+          Sign in instead
+        </Button>
       </>,
     ],
     [
       AuthErrorType.UserNotSignedUp,
       <>
-        There is no account associated with that sign in. You can try{" "}
-        <Typography.Link
+        <div className="mb-4">There is no account associated with that sign in.</div>
+        <Button
+          size="xs"
           onClick={() => {
+            setSignInError(null);
             setType("sign_up");
           }}
         >
-          signing up
-        </Typography.Link>{" "}
-        instead.
+          Sign up instead
+        </Button>
       </>,
     ],
     [
       AuthErrorType.InvalidFederatedCredential,
-      <>There as a problem with the response from the sign in provider. Please try again.</>,
+      <>There is a problem with the response from the sign in provider. Please try again.</>,
     ],
   ]);
 
-  const describeError = ({ error, detail }: AuthContextError) =>
-    errorDescriptions.get(error) ?? detail;
+  const describeError = (error: SignInError): React.ReactNode => {
+    if (error.type === "auth") {
+      return errorDescriptions.get(error.authError.error) ?? error.authError.detail;
+    }
+    console.error("Unknown error signing in.", error);
+    return "There was a problem with sign in. Please try again.";
+  };
 
   return (
-    <Flex vertical gap={4 * token.sizeUnit}>
-      <div style={{ textAlign: "center" }} ref={googleHackRef}>
-        {type === "sign_in" && (
-          <>
-            <Typography.Title>Sign in</Typography.Title>
-            <Typography.Text>Use one of the providers below to sign in.</Typography.Text>
-          </>
-        )}
-        {type === "sign_up" && (
-          <>
-            <Typography.Title>Sign up</Typography.Title>
-            <Typography.Text>
-              Use one of the providers below to create a new account.
-            </Typography.Text>
-          </>
-        )}
-      </div>
-      {type === "sign_in" && auth?.signInError && (
-        <Alert
-          message="There was a problem signing you in"
-          description={describeError(auth.signInError)}
-          type="error"
-          closable
-          onClose={auth.dismissSignInError}
-        />
+    <div className="space-y-6">
+      <h4 className="text-xl font-medium text-gray-900 dark:text-white">
+        {type === "sign_in" && "Sign in"}
+        {type === "sign_up" && "Sign up"}
+      </h4>
+      {type === "sign_in" && (
+        <div className="text-sm">
+          Use one of the providers below to sign in with an existing account.
+        </div>
       )}
-      {type === "sign_up" && auth?.signUpError && (
-        <Alert
-          message="There was a problem signing you up"
-          description={describeError(auth.signUpError)}
-          type="error"
-          closable
-          onClose={auth.dismissSignUpError}
-        />
+      {type === "sign_up" && (
+        <div className="text-sm">Use one of the providers below to register a new account.</div>
       )}
-      <Flex vertical align="center" gap={4 * token.sizeUnit} style={{ marginTop: token.margin }}>
-        {isGoogleSignInSupported && (
-          <GoogleLogin
-            theme="outline"
-            size="large"
-            text={type === "sign_in" ? "continue_with" : "signup_with"}
-            context={type === "sign_in" ? "signin" : "signup"}
-            width={googleButtonWidth}
-            onSuccess={({ credential }) => {
-              if (!credential || !auth.google) {
-                return;
-              }
-              if (type === "sign_in") {
-                auth.signInWithFederatedCredential(auth.google.provider, credential, {
+      {signInError && (
+        <Alert
+          color="failure"
+          additionalContent={describeError(signInError)}
+          onDismiss={() => {
+            setSignInError(null);
+          }}
+        >
+          {type === "sign_in" && (
+            <span className="font-medium">There was a problem signing in.</span>
+          )}
+          {type === "sign_up" && (
+            <span className="font-medium">There was a problem signing up.</span>
+          )}
+        </Alert>
+      )}
+      {googleProviderName && (
+        <>
+          <div className="w-full" ref={googleHackRef} />
+          <GoogleOAuthProvider clientId={googleClientId}>
+            <GoogleLogin
+              theme="outline"
+              size="large"
+              text={type === "sign_in" ? "continue_with" : "signup_with"}
+              context={type === "sign_in" ? "signin" : "signup"}
+              width={googleButtonWidth}
+              onSuccess={({ credential }) => {
+                if (!credential) {
+                  console.error("Did not receive a Google credential despite sign in succeeding.");
+                  return;
+                }
+                signInWithFederatedCredential(googleProviderName, credential, {
+                  isNewUser: type === "sign_up",
                   onSuccess,
+                  onError: setSignInError,
                 });
-              }
-              if (type === "sign_up") {
-                auth.signUpWithFederatedCredential(auth.google.provider, credential, {
-                  onSuccess,
-                });
-              }
-            }}
-          />
-        )}
-      </Flex>
-      <Divider>OR</Divider>
-      <div style={{ textAlign: "center" }}>
-        {type === "sign_in" && (
-          <Typography.Text>
-            Don't have an account?{" "}
-            <Typography.Link
-              onClick={() => {
-                setType("sign_up");
               }}
-            >
-              Sign up now.
-            </Typography.Link>
-          </Typography.Text>
-        )}
-        {type === "sign_up" && (
-          <Typography.Text>
-            Already registered?{" "}
-            <Typography.Link
-              onClick={() => {
-                setType("sign_in");
-              }}
-            >
-              Sign in now.
-            </Typography.Link>
-          </Typography.Text>
-        )}
-      </div>
-    </Flex>
-  );
-};
-
-export const SignInOrUpForm: React.FC<SignInOrUpFormProps> = (props) => {
-  const auth = useAuth();
-  return (
-    <GoogleOAuthProvider clientId={`${auth?.google?.clientId}`}>
-      <SignInOrUpFormContent {...props} />
-    </GoogleOAuthProvider>
+            />
+          </GoogleOAuthProvider>
+        </>
+      )}
+      {type == "sign_in" && (
+        <div className="flex justify-between text-sm font-medium text-gray-500 dark:text-gray-300">
+          Not registered?&nbsp;
+          <a
+            href="#"
+            onClick={() => setType("sign_up")}
+            className="text-cyan-700 hover:underline dark:text-cyan-500"
+          >
+            Create a new account
+          </a>
+        </div>
+      )}
+      {type == "sign_up" && (
+        <div className="flex justify-between text-sm font-medium text-gray-500 dark:text-gray-300">
+          Already registered?&nbsp;
+          <a
+            href="#"
+            onClick={() => setType("sign_in")}
+            className="text-cyan-700 hover:underline dark:text-cyan-500"
+          >
+            Sign in
+          </a>
+        </div>
+      )}
+    </div>
   );
 };
 

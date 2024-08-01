@@ -1,7 +1,10 @@
 ---
-import App from "../App";
 import BaseLayout from "../layouts/base.astro";
+import { GraphiQL } from "../components/GraphiQL";
 ---
+
 <BaseLayout>
-  <App client:only="react" />
+  <div style="height: calc(100vh - 6rem)" class="mt-1 overflow-hidden rounded-2xl" >
+    <GraphiQL client:only="react" />
+  </div>
 </BaseLayout>
