@@ -131,7 +131,10 @@ export const SignInOrUpForm: React.FC<SignInOrUpFormProps> = ({
           Not registered?&nbsp;
           <a
             href="#"
-            onClick={() => setType("sign_up")}
+            onClick={(e) => {
+              setType("sign_up");
+              e.preventDefault();
+            }}
             className="text-cyan-700 hover:underline dark:text-cyan-500"
           >
             Create a new account
@@ -143,7 +146,10 @@ export const SignInOrUpForm: React.FC<SignInOrUpFormProps> = ({
           Already registered?&nbsp;
           <a
             href="#"
-            onClick={() => setType("sign_in")}
+            onClick={(e) => {
+              setType("sign_in");
+              e.preventDefault();
+            }}
             className="text-cyan-700 hover:underline dark:text-cyan-500"
           >
             Sign in
