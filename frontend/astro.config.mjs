@@ -7,6 +7,9 @@ import tailwind from "@astrojs/tailwind";
 export default defineConfig({
   integrations: [react(), tailwind()],
   vite: {
+    build: {
+      sourcemap: true,
+    },
     define: {
       // HACK: work around next.js Link component trying to examine process.env.
       "process.env": {},
