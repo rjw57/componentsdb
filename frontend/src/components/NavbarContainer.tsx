@@ -31,7 +31,7 @@ export const NavbarContainer: React.FC<NavbarContainerProps> = ({ pathname = "",
       </Navbar.Link>
     </Navbar.Collapse>
     <div className="flex-grow" />
-    <div className="flex gap-4 items-center">
+    <div className="flex gap-2 items-center">
       <DarkThemeToggle />
       {children}
       <Navbar.Toggle />
