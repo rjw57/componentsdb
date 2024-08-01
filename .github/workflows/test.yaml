@@ -32,3 +32,23 @@ jobs:
         run: poetry -C backend install
       - name: Run test suite
         run: poe -C backend test
+  build:
+    name: Check backend and frontend docker images build
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          tags: rjw57/componentsdb/backend:latest
+      - name: Build frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          tags: rjw57/componentsdb/frontend:latest
