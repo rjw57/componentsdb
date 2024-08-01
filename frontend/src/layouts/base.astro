@@ -1,4 +1,5 @@
 ---
+import { ViewTransitions } from "astro:transitions";
 import { ThemeModeScript } from "flowbite-react";
 import NavBar from "../components/NavBar.astro";
 
@@ -6,13 +7,41 @@ const { title } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" transition:animate="none">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <title>{title ?? "Components Database"}</title>
+    <ViewTransitions />
     <ThemeModeScript />
+    <script is:inline>
+      // This script is a version of ThemeModeScript from flowbite-react which understands astro's
+      // view transitions and can prepare the new document before it is show to the user.
+      try {
+        const setupDarkMode = (newDocument) => {
+          const mode =
+            window.localStorage.getItem("flowbite-theme-mode") ??
+            "undefined" ??
+            "light";
+          const computedMode =
+            mode === "auto"
+              ? window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light"
+              : mode;
+
+          if (computedMode === "dark") {
+            newDocument.documentElement.classList.add("dark");
+          } else {
+            newDocument.documentElement.classList.remove("dark");
+          }
+        };
+        document.addEventListener("astro:before-swap", ({ newDocument }) => {
+          setupDarkMode(newDocument);
+        });
+      } catch (e) {}
+    </script>
   </head>
   <body
     class="bg-white text-gray-600 antialiased dark:bg-gray-900 dark:text-gray-400"

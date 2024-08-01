@@ -48,7 +48,7 @@ export const useSignIn = () => {
   const credentials = useStore($credentials);
   const googleProviderName = useStore($googleProviderName);
   const { accessToken, refreshToken } = credentials;
-  const isSignedIn = accessToken && refreshToken && credentials.userId;
+  const isSignedIn = !!(accessToken && refreshToken && credentials.userId);
   const authenticatedUser = isSignedIn
     ? {
         id: credentials.userId,
@@ -69,7 +69,6 @@ export const useSignIn = () => {
   // Query the federated identity providers supported by the backend.
   useFederatedIdentitiyProviders({
     client: unauthenticatedClient,
-    skip: import.meta.env.SSR, // don't try to fetch providers when rendering on server
     onCompleted: (result) => {
       result.auth.federatedIdentityProviders.forEach(({ name, issuer, audience }) => {
         if (issuer === "https://accounts.google.com" && audience === googleClientId) {

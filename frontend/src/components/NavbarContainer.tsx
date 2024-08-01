@@ -1,18 +1,21 @@
 import React from "react";
 import { DarkThemeToggle, Navbar } from "flowbite-react";
-import Link from "next/link";
+import NavbarSignIn from "./NavbarSignIn";
+import NavbarAvatar from "./NavbarAvatar";
 
 export interface NavbarContainerProps {
   pathname?: string;
-  signInContent?: React.ReactNode;
-  avatarContent?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-export const NavbarContainer: React.FC<NavbarContainerProps> = ({
-  pathname = "",
-  signInContent,
-  avatarContent,
-}) => (
+export const NavbarDynamicContent = () => (
+  <>
+    <NavbarSignIn />
+    <NavbarAvatar />
+  </>
+);
+
+export const NavbarContainer: React.FC<NavbarContainerProps> = ({ pathname = "", children }) => (
   <Navbar fluid rounded>
     <Navbar.Brand className="pr-8">
       <span className="self-center whitespace-nowrap text-xl font-semibold dark:text-white">
@@ -20,18 +23,17 @@ export const NavbarContainer: React.FC<NavbarContainerProps> = ({
       </span>
     </Navbar.Brand>
     <Navbar.Collapse>
-      <Navbar.Link as={Link} href="/" active={pathname === "/"}>
+      <Navbar.Link href="/" active={pathname === "/"}>
         Home
       </Navbar.Link>
-      <Navbar.Link as={Link} href="/api" active={pathname == "/api"}>
+      <Navbar.Link href="/api" active={pathname === "/api"}>
         GraphQL
       </Navbar.Link>
     </Navbar.Collapse>
     <div className="flex-grow" />
     <div className="flex gap-4 items-center">
       <DarkThemeToggle />
-      {signInContent}
-      {avatarContent}
+      {children}
       <Navbar.Toggle />
     </div>
   </Navbar>

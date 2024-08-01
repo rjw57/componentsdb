@@ -1,10 +1,8 @@
 ---
-import NavbarContainer from "./NavbarContainer";
-import NavbarSignIn from "./NavbarSignIn";
-import NavbarAvatar from "./NavbarAvatar";
+import NavbarContainer, { NavbarDynamicContent } from "./NavbarContainer";
 ---
 
-<NavbarContainer client:load pathname={Astro.url.pathname}>
-  <NavbarSignIn slot="signInContent" client:only="react" />
-  <NavbarAvatar slot="avatarContent" client:only="react" />
+<NavbarContainer pathname={Astro.url.pathname} client:load>
+  <!-- We use transition:persist here to stop dynaic content flashing on page navigation. -->
+  <NavbarDynamicContent client:only="react" transition:persist />
 </NavbarContainer>
