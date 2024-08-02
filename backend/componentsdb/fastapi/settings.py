@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     federated_identity_providers: dict[str, FederatedIdentityProvider] = Field(
         default_factory=dict
     )
+    json_logging: bool = False
 
 
 def load_settings() -> Settings:

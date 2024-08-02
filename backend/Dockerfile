@@ -28,7 +28,7 @@ HEALTHCHECK \
   --start-period=120s \
   --start-interval=1s \
   CMD ["poetry", "run", "python", "-m", "componentsdb.cli", "server", "healthcheck"]
-CMD ["server", "run"]
+CMD ["server", "dev"]
 
 FROM deps AS prod
 COPY ./ ./
