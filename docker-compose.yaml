@@ -46,18 +46,15 @@ services:
 
   # Run the alembic migration tool
   alembic:
+    build:
+      target: alembic
+      context: ./backend
     profiles:
       - tool
-    build:
-      dockerfile_inline: |
-        FROM python:3.12-slim
-        RUN pip install alembic~=1.13 asyncpg==0.29 black~=23.1
     environment:
       ALEMBIC_SQLALCHEMY_URL: postgresql+asyncpg://postgres:postgres-pass@db/components
-    entrypoint: ["alembic"]
-    working_dir: /workspace/backend
     volumes:
-      - ./:/workspace
+      - ./backend/:/usr/src/app/
     depends_on:
       db:
         condition: service_healthy
@@ -66,8 +63,7 @@ services:
 
   # Run database migrations
   db-migrate:
-    extends:
-      service: alembic
+    extends: alembic
     profiles:
       - dev
       - prod
@@ -80,12 +76,7 @@ services:
     profiles:
       - test
     build:
-      dockerfile_inline: |
-        FROM python:3.12-slim
-        WORKDIR /usr/src/app/
-        RUN pip install poetry
-        COPY poetry.lock pyproject.toml /usr/src/app/
-        RUN poetry install --no-root
+      target: dev-tool
       context: ./backend
     entrypoint: ["poetry", "run", "poe", "test"]
     volumes:
@@ -102,22 +93,10 @@ services:
     profiles:
       - tool
     build:
-      dockerfile_inline: |
-        FROM python:3.12-slim
-        WORKDIR /usr/src/app/
-        RUN pip install poetry~=1.8 poetry-plugin-export~=1.8
-        COPY poetry.lock pyproject.toml /usr/src/app/
-        RUN \
-          poetry export -f requirements.txt --output /tmp/requirements.txt && \
-          pip install -r /tmp/requirements.txt && \
-          rm /tmp/requirements.txt
-        COPY ./ ./
-        RUN pip install -e .
-        ENTRYPOINT ["componentsdb"]
-        EXPOSE 8000
+      target: dev-tool
       context: ./backend
     volumes:
-      - ./backend:/usr/src/app:ro
+      - ./backend:/usr/src/app
     environment: &backend-env
       SQLALCHEMY_DB_URL: postgresql+asyncpg://components-user:components-pass@db/components
       ACCESS_TOKEN_LIFETIME: "120" # a short period so we stress-test refresh logic
@@ -141,50 +120,32 @@ services:
   backend-dev:
     profiles:
       - dev
-    extends: backend-cli
-    command: ["server", "dev", "--host", "0.0.0.0", "--port", "8000"]
+    build:
+      target: dev
+      context: ./backend
+    volumes:
+      - ./backend:/usr/src/app:ro
+    environment:
+      <<: *backend-env
+      HOST: "0.0.0.0"
+      PORT: "8000"
     ports:
       - 8000:8000
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "componentsdb",
-          "server",
-          "healthcheck",
-          "--host",
-          "127.0.0.1",
-          "--port",
-          "8000",
-        ]
-      interval: 30s
-      retries: 5
-      start_period: 120s
-      start_interval: 1s
 
   frontend-dev:
     profiles:
       - dev
     build:
-      dockerfile_inline: |
-        # syntax=docker/dockerfile:1.7-labs
-        FROM node:22
-        WORKDIR /usr/src/app
-        COPY --exclude=src . .
-        RUN yarn install
-        ENTRYPOINT ["yarn"]
+      target: dev
       context: ./frontend/
-    command: ["start", "--host", "0.0.0.0", "--port", "3000"]
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:3000/healthy"]
-      interval: 30s
-      retries: 5
-      start_period: 120s
-      start_interval: 1s
     ports:
       - 3001:3000
     volumes:
+      # The JS ecosystem in general likes to keep node_modules in the root which is a bit of a pain
+      # when we bind-mount into the container. As such the non-src/ directories are baked into the
+      # container and we need to manually mount any special files/directories as necessary.
       - ./frontend/src:/usr/src/app/src:ro
+      - ./frontend/public:/usr/src/app/public:ro
 
   traefik-dev:
     profiles:
@@ -213,28 +174,14 @@ services:
     profiles:
       - prod
     build:
-      dockerfile: Dockerfile
+      target: prod
       context: ./backend
-    command: ["server", "run", "--host", "0.0.0.0", "--port", "8000"]
-    environment: *backend-env
     ports:
       - 8000:8000
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "componentsdb",
-          "server",
-          "healthcheck",
-          "--host",
-          "127.0.0.1",
-          "--port",
-          "8000",
-        ]
-      interval: 30s
-      retries: 5
-      start_period: 120s
-      start_interval: 1s
+    environment:
+      <<: *backend-env
+      HOST: "0.0.0.0"
+      PORT: "8000"
     depends_on:
       db:
         condition: service_healthy
@@ -247,15 +194,9 @@ services:
     build:
       dockerfile: Dockerfile
       context: ./frontend
-      target: server
+      target: prod
     ports:
       - 3001:80
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost/healthy"]
-      interval: 30s
-      retries: 5
-      start_period: 120s
-      start_interval: 1s
 
   traefik-prod:
     profiles:
@@ -278,12 +219,7 @@ services:
     profiles:
       - tool
     build:
-      dockerfile_inline: |
-        FROM python:3.12-slim
-        WORKDIR /usr/src/app/backend
-        RUN pip install poetry
-        COPY poetry.lock pyproject.toml /usr/src/app/backend
-        RUN poetry install --no-root
+      target: dev
       context: ./backend
     entrypoint: ["poetry", "run"]
     command:
@@ -292,10 +228,11 @@ services:
         "export-schema",
         "componentsdb.graphql:schema",
         "--output",
-        "/usr/src/app/frontend/schema.gql",
+        "/usr/src/frontend/schema.gql",
       ]
     volumes:
-      - ./:/usr/src/app
+      - ./backend:/usr/src/app/:ro
+      - ./frontend:/usr/src/frontend/
 
 volumes:
   db-data:
