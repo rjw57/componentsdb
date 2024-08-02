@@ -55,7 +55,7 @@ tasks:
   compose-build:
     desc: "build local images"
     cmds:
-      - docker compose --profile=* build
+      - COMPOSE_PARALLEL_LIMIT=1 docker compose --profile=* build
   psql:
     desc: "open a database shell"
     cmds:

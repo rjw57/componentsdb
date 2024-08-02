@@ -46,11 +46,11 @@ services:
 
   # Run the alembic migration tool
   alembic:
+    profiles:
+      - tool
     build:
       target: alembic
       context: ./backend
-    profiles:
-      - tool
     environment:
       ALEMBIC_SQLALCHEMY_URL: postgresql+asyncpg://postgres:postgres-pass@db/components
     volumes:
@@ -131,6 +131,11 @@ services:
       PORT: "8000"
     ports:
       - 8000:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
 
   frontend-dev:
     profiles:
