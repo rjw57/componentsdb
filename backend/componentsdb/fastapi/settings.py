@@ -11,6 +11,7 @@ class Settings(BaseSettings):
         default_factory=dict
     )
     json_logging: bool = False
+    verbose_logging: bool = False
 
 
 def load_settings() -> Settings:

@@ -18,6 +18,7 @@ def run(
     port: Annotated[int, typer.Option(envvar="PORT")] = 8000,
     reload: bool = False,
     json_logging: bool = True,
+    log_all_access: bool = False,
 ):
     """
     Run a production-ready server.
@@ -33,6 +34,7 @@ def run(
         port=port,
         reload=reload,
         log_config=make_logconfig(json_logging=json_logging),
+        access_log=log_all_access,
     )
 
 
