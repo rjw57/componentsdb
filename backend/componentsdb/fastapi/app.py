@@ -29,12 +29,14 @@ async def logging_middleware(request: Request, call_next) -> Response:
         start = time.monotonic()
         response: Response = await call_next(request)
         stop = time.monotonic()
+        sql_execution_count = getattr(request.state, "sql_execution_count", 0)
         LOG.info(
             f"{request.method} {request.url.path} {response.status_code}",
             method=request.method,
             path=request.url.path,
             status_code=response.status_code,
             duration_ms=(stop - start) * 1e3,
+            sql_execution_count=sql_execution_count,
         )
 
     return response
