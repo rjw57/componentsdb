@@ -1,6 +1,130 @@
 ---
 import BaseLayout from "../layouts/base.astro";
+import { Card, TextInput } from "flowbite-react";
+import { HiSearch } from "react-icons/hi";
 ---
+
 <BaseLayout>
-  Hello
+  <div class="max-w-screen-md mx-auto">
+    <h1
+      class="mb-4 text-4xl font-extrabold tracking-tight leading-none text-gray-900 md:text-5xl lg:text-6xl dark:text-white pt-12"
+    >
+      Find that component
+    </h1>
+    <p
+      class="mb-8 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400"
+    >
+      Start typing below to search for components in your collection
+    </p>
+
+    <div class="space-y-8">
+      <TextInput
+        type="text"
+        sizing="lg"
+        autoFocus
+        placeholder="Find something"
+        icon={HiSearch}
+      />
+
+      <div class="grid grid-cols-2 gap-4">
+        <Card>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-row">
+              <div class="flex-grow">
+                <p
+                  class="text-lg truncate font-medium text-gray-900 dark:text-white"
+                >
+                  74HC00
+                </p>
+                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                  Quad 2-input NAND gate
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-lg font-medium text-gray-900 dark:text-white">
+                  A56
+                </p>
+                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                  Albion
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-row gap-2">
+              <div>
+                <p
+                  class="text-lg truncate font-medium text-gray-900 dark:text-white"
+                >
+                  74HC00
+                </p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  A long description which will probably need to wrap.
+                </p>
+              </div>
+              <div class="text-right flex-grow">
+                <p class="text-lg font-medium text-gray-900 dark:text-white">
+                  B4
+                </p>
+                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                  Barondunum
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-row">
+              <div class="flex-grow">
+                <p
+                  class="text-lg truncate font-medium text-gray-900 dark:text-white"
+                >
+                  74HC00
+                </p>
+                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                  Quad 2-input NAND gate
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-lg font-medium text-gray-900 dark:text-white">
+                  A56
+                </p>
+                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                  Albion
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-row">
+              <div class="flex-grow">
+                <p
+                  class="text-lg truncate font-medium text-gray-900 dark:text-white"
+                >
+                  74HC00
+                </p>
+                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                  Quad 2-input NAND gate
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-lg font-medium text-gray-900 dark:text-white">
+                  A56
+                </p>
+                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
+                  Albion
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+        <Card> foo </Card>
+      </div>
+    </div>
+  </div>
 </BaseLayout>
