@@ -42,13 +42,13 @@ export type SignInError =
 // A global promise which represents any in-flight credential refresh request. We use a global
 // promise so that the authenticated fetch can make sure it only attempts to refresh the token once
 // even if there are parallel fetch requests.
-let inFlightRefresh: Promise<CredentialResponse> | null;
+let inFlightRefresh: Promise<CredentialResponse> | null = null;
 
 export const useSignIn = () => {
   const credentials = useStore($credentials);
   const googleProviderName = useStore($googleProviderName);
   const { accessToken, refreshToken } = credentials;
-  const isSignedIn = !!(accessToken && refreshToken && credentials.userId);
+  const isSignedIn = !!accessToken;
   const authenticatedUser = isSignedIn
     ? {
         id: credentials.userId,
@@ -145,11 +145,11 @@ export const useSignIn = () => {
           ...init,
           headers: {
             ...(init?.headers ?? {}),
-            ...(isSignedIn ? { Authorization: `Bearer ${accessToken}` } : {}),
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
           },
         });
 
-        if (!isSignedIn || response.status !== 403) {
+        if (!isSignedIn || !refreshToken || response.status !== 403) {
           return response;
         }
 
@@ -157,7 +157,7 @@ export const useSignIn = () => {
         // to use the refresh token.
 
         // Kick off a refresh request if one is not already in flight.
-        if (!inFlightRefresh) {
+        if (inFlightRefresh === null) {
           inFlightRefresh = new Promise((resolve, reject) => {
             refreshCredentials({
               variables: {
@@ -166,7 +166,9 @@ export const useSignIn = () => {
                 },
               },
               onError: (errors) => {
-                reject(errors);
+                console.error("Error when trying to refresh token:", errors);
+                signOut();
+                reject(new Error("Failed to refresh authentication."));
               },
               onCompleted: ({ auth: { refreshCredentials: response } }) => {
                 if (response.__typename == "AuthError") {
