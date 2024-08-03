@@ -18,8 +18,8 @@ RESOURCE_TABLES = [
 
 @pytest_asyncio.fixture
 async def fake_items(db_engine: AsyncEngine, faker: Faker):
-    session = async_sessionmaker(db_engine, expire_on_commit=False)()
-    async with session.begin():
+    session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with session_maker.begin() as session:
         session.add(f.fake_cabinet(faker))
         session.add(f.fake_drawer(faker))
         session.add(f.fake_component(faker))
@@ -27,7 +27,6 @@ async def fake_items(db_engine: AsyncEngine, faker: Faker):
         session.add(f.fake_user(faker))
         session.add(f.fake_access_token(faker))
         session.add(f.fake_federated_user_credential(faker))
-        await session.commit()
 
 
 @pytest.mark.asyncio
