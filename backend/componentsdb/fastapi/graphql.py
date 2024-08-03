@@ -12,7 +12,7 @@ from .auth import get_auth_provider, get_authenticated_user
 from .db import get_db_session
 
 
-async def get_graphql_context(
+def get_graphql_context(
     session: AsyncSession = Depends(get_db_session),
     auth_provider: AuthenticationProvider = Depends(get_auth_provider),
     authenticated_user: Optional[User] = Depends(get_authenticated_user),

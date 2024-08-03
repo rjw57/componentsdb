@@ -17,7 +17,6 @@ def make_logconfig(json_logging: bool = True):
         structlog.stdlib.add_logger_name,
         structlog.processors.StackInfoRenderer(),
         structlog.dev.set_exc_info,
-        structlog.processors.format_exc_info,
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
         (structlog.processors.JSONRenderer() if json_logging else structlog.dev.ConsoleRenderer()),

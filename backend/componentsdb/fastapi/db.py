@@ -4,7 +4,7 @@ from functools import cache
 import structlog
 from fastapi import Depends, Request
 from sqlalchemy import event
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 
 from .settings import Settings, load_settings
 
@@ -15,14 +15,14 @@ QUERY_COUNT_THRESHOLD = 10
 
 
 @cache
-def _get_db_session_maker(sqlalchemy_db_url: str):
-    db_engine = create_async_engine(load_settings().sqlalchemy_db_url)
+def _get_db_engine(sqlalchemy_db_url: str) -> AsyncEngine:
+    engine = create_async_engine(sqlalchemy_db_url)
 
-    @event.listens_for(db_engine.sync_engine, "before_cursor_execute")
+    @event.listens_for(engine.sync_engine, "before_cursor_execute")
     def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
         conn.info["query_start_time"] = time.monotonic()
 
-    @event.listens_for(db_engine.sync_engine, "after_cursor_execute")
+    @event.listens_for(engine.sync_engine, "after_cursor_execute")
     def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
         query_start_time = conn.info.get("query_start_time", None)
         if query_start_time is None:
@@ -36,28 +36,28 @@ def _get_db_session_maker(sqlalchemy_db_url: str):
                 statement=statement,
             )
 
-    return async_sessionmaker(db_engine, expire_on_commit=False, autoflush=True)
+    return engine
 
 
-def get_db_session_maker(settings: Settings = Depends(load_settings)):
-    return _get_db_session_maker(settings.sqlalchemy_db_url)
+def get_db_engine(settings: Settings = Depends(load_settings)):
+    return _get_db_engine(settings.sqlalchemy_db_url)
 
 
-async def get_db_session(request: Request, db_session_maker=Depends(get_db_session_maker)):
+async def get_db_session(request: Request, engine: AsyncEngine = Depends(get_db_engine)):
     request.state.sql_execution_count = 0
+    session_maker = async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
 
     def on_do_orm_execute(orm_execute_state):
         request.state.sql_execution_count += 1
 
-    async with db_session_maker.begin() as session:
+    async with session_maker.begin() as session:
         event.listen(session.sync_session, "do_orm_execute", on_do_orm_execute)
-        try:
-            yield session
-        finally:
-            event.remove(session.sync_session, "do_orm_execute", on_do_orm_execute)
-        if request.state.sql_execution_count > QUERY_COUNT_THRESHOLD:
-            LOG.warn(
-                "Executed a large number of SQL queries while handling request.",
-                threshold=QUERY_COUNT_THRESHOLD,
-                count=request.state.sql_execution_count,
-            )
+        yield session
+    event.remove(session.sync_session, "do_orm_execute", on_do_orm_execute)
+
+    if request.state.sql_execution_count > QUERY_COUNT_THRESHOLD:
+        LOG.warn(
+            "Executed a large number of SQL queries while handling request.",
+            threshold=QUERY_COUNT_THRESHOLD,
+            count=request.state.sql_execution_count,
+        )
