@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 import strawberry
 
@@ -77,6 +77,10 @@ class Component(Node):
         )
 
 
+class ComponentQueryKey(NamedTuple):
+    search: Optional[str] = None
+
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -94,6 +98,18 @@ class Query:
     @strawberry.field
     async def cabinet(self, info: strawberry.Info, id: strawberry.ID) -> Optional[Cabinet]:
         return await _db(info.context).cabinet.load(id)
+
+    @strawberry.field
+    def components(
+        self,
+        info: strawberry.Info,
+        search: Optional[str] = None,
+        after: Optional[str] = None,
+        first: Optional[int] = None,
+    ) -> Connection[Component]:
+        return _db(info.context).component_connection.make_connection(
+            ComponentQueryKey(search=search), PaginationParams(after=after, first=first)
+        )
 
 
 @strawberry.type

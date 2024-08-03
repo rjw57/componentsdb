@@ -56,7 +56,9 @@ cmd = "pytest"
 addopts = "--cov --cov-report html --cov-report term"
 filterwarnings = [
   # From strawberry GraphQL library
- "ignore:'typing.ByteString' is deprecated:DeprecationWarning",
+  "ignore:'typing.ByteString' is deprecated:DeprecationWarning",
+  # Benign warning from alembic tests
+  "ignore:Computed default on components.search_text cannot be modified:UserWarning",
 ]
 
 [tool.coverage.run]

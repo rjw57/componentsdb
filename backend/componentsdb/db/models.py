@@ -79,6 +79,9 @@ class Component(Base, ResourceMixin):
     code: Mapped[str]
     description: Mapped[Optional[str]]
     datasheet_url: Mapped[Optional[str]]
+    search_text: Mapped[str] = mapped_column(
+        sa.Computed("lower(coalesce(code, '') || coalesce(description, ''))"),
+    )
 
     collections: Mapped[list["Collection"]] = relationship(
         cascade="all, delete-orphan", back_populates="component"
@@ -86,6 +89,14 @@ class Component(Base, ResourceMixin):
 
 
 sa.Index("idx_components_uuid", Component.uuid)
+sa.Index(
+    "idx_components_trigrams",
+    Component.search_text,
+    postgresql_using="gin",
+    postgresql_ops={
+        "search_text": "gin_trgm_ops",
+    },
+)
 
 
 @dataclass

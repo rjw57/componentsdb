@@ -74,6 +74,18 @@ type Component {
   collections(after: String = null, first: Int = null): CollectionConnection!
 }
 
+type ComponentConnection {
+  count: Int!
+  edges: [ComponentEdge!]!
+  nodes: [Component!]!
+  pageInfo: PageInfo!
+}
+
+type ComponentEdge {
+  cursor: String!
+  node: Component!
+}
+
 input CredentialsFromFederatedCredentialInput {
   provider: String!
   credential: String!
@@ -120,6 +132,7 @@ type Query {
   auth: AuthQueries!
   cabinets(after: String = null, first: Int = null): CabinetConnection!
   cabinet(id: ID!): Cabinet
+  components(search: String = null, after: String = null, first: Int = null): ComponentConnection!
 }
 
 input RefreshCredentialsInput {

@@ -1,3 +1,4 @@
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import models as dbm
@@ -52,7 +53,7 @@ class RelatedComponentLoader(RelatedEntityLoader[dbm.Component, "types.Component
         super().__init__(session, dbm.Component, component_node_factory)
 
 
-class CabinetConnectionFactory(EntityConnectionFactory[dbm.Cabinet, "types.Cabinet"]):
+class CabinetConnectionFactory(EntityConnectionFactory[dbm.Cabinet, "types.Cabinet", None]):
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Cabinet, cabinet_node_factory)
 
@@ -76,3 +77,27 @@ class ComponentCollectionConnectionFactory(
 ):
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Component.collections, collection_node_factory)
+
+
+class ComponentConnectionFactory(
+    EntityConnectionFactory[dbm.Component, "types.Component", "types.ComponentQueryKey"]
+):
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, dbm.Component, component_node_factory)
+
+    def filter(self, keys, stmt):
+        threshold = 0.3
+        return [
+            (
+                (
+                    stmt.where(
+                        sa.func.word_similarity(sa.func.lower(k.search), dbm.Component.search_text)
+                        > threshold,
+                    )
+                    if k.search is not None
+                    else stmt
+                ),
+                sa.func.word_similarity(sa.func.lower(k.search), dbm.Component.search_text),
+            )
+            for k in keys
+        ]

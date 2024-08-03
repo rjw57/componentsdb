@@ -1,7 +1,7 @@
 import base64
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from typing import Any, Callable, Generic, Optional, TypeVar
+from typing import Any, Callable, Generic, Optional, Sequence, TypeVar
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -25,13 +25,21 @@ _K = TypeVar("_K")
 
 
 def select_after_uuid(
-    model: type[_R], uuid: UUID, *, base_select: Optional[sa.Select[tuple[_R]]] = None
+    model: type[_R],
+    uuid: UUID,
+    *,
+    base_select: Optional[sa.Select[tuple[_R]]] = None,
+    ordering_key: Any = None
 ) -> sa.Select[tuple[_R]]:
+    ordering_key = model.id if ordering_key is None else ordering_key
     subquery = (
-        sa.select(model.id).where(model.uuid == uuid).order_by(model.id.asc()).scalar_subquery()
+        sa.select(ordering_key)
+        .where(model.uuid == uuid)
+        .order_by(ordering_key.asc(), model.id)
+        .scalar_subquery()
     )
     base_select = base_select if base_select is not None else sa.select(model)
-    return base_select.where(model.id > subquery).order_by(model.id.asc())
+    return base_select.where(ordering_key > subquery).order_by(ordering_key.asc())
 
 
 def uuid_from_cursor(cursor: str) -> UUID:
@@ -159,7 +167,7 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         return [min_max_by_id.get(id_, None) for id_ in keys]
 
 
-class EntityConnectionFactory(Generic[_R, _N], ConnectionFactory[None, _N]):
+class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
     """
     A ConnectionFactory which can load lists of objects from the database.
     """
@@ -171,17 +179,23 @@ class EntityConnectionFactory(Generic[_R, _N], ConnectionFactory[None, _N]):
         self.model = sa.inspect(mapper).entity
         self.node_factory = node_factory
 
-    def base_select(self) -> sa.Select[_R]:
-        return sa.select(self.model).order_by(self.model.id.asc())
+    def filter(self, keys: list[_K], stmt: sa.Select[_R]) -> Sequence[tuple[sa.Select[_R], Any]]:
+        return [(stmt, self.model.id) for _ in keys]
 
-    async def _load_edges(self, keys: list[tuple[None, PaginationParams]]) -> list[list[Edge[_N]]]:
+    async def _load_edges(self, keys: list[tuple[_K, PaginationParams]]) -> list[list[Edge[_N]]]:
         rvs: list[list[Edge[_N]]] = []
-        for k, p in keys:
-            stmt = self.base_select()
+        stmts_for_keys = self.filter([k for k, _ in keys], sa.select(self.model))
+        # TODO: ordering
+        for (k, p), (stmt, ordering_key) in zip(keys, stmts_for_keys):
             if p.after is not None:
-                stmt = select_after_uuid(self.model, uuid_from_cursor(p.after), base_select=stmt)
+                stmt = select_after_uuid(
+                    self.model,
+                    uuid_from_cursor(p.after),
+                    base_select=stmt,
+                    ordering_key=ordering_key,
+                )
             stmt = stmt.limit(p.first if p.first is not None else DEFAULT_LIMIT)
-            cabinets = (await self._session.execute(stmt)).scalars().all()
+            cabinets = (await self._session.execute(stmt)).scalars()
             rvs.append(
                 [
                     Edge(
@@ -194,14 +208,28 @@ class EntityConnectionFactory(Generic[_R, _N], ConnectionFactory[None, _N]):
 
         return rvs
 
-    async def _load_counts(self, keys: list[None]) -> list[int]:
-        count = (await self._session.execute(sa.select(sa.func.count(self.model.id)))).scalar_one()
-        return [count] * len(keys)
+    async def _load_counts(self, keys: list[_K]) -> list[int]:
+        # TODO: there may be some way to coalesce this into a single statement?
+        count_stmt = sa.select(sa.func.count(self.model.id)).select_from(self.model)
+        return [
+            (await self._session.execute(stmt)).scalar_one()
+            for stmt, _ in self.filter(keys, count_stmt)
+        ]
 
-    async def _load_min_max_ids(self, keys: list[None]) -> list[Optional[MinMaxIds]]:
-        min_max_id_stmt = sa.select(sa.func.min(self.model.id), sa.func.max(self.model.id))
-        min_id, max_id = (await self._session.execute(min_max_id_stmt)).one()
-        return [MinMaxIds(min_id, max_id)] * len(keys)
+    async def _load_min_max_ids(self, keys: list[_K]) -> list[Optional[MinMaxIds]]:
+        # TODO: there may be some way to coalesce this into a single statement?
+        min_max_id_stmt = sa.select(
+            sa.func.min(self.model.id), sa.func.max(self.model.id)
+        ).select_from(self.model)
+        rvs: list[Optional[MinMaxIds]] = []
+        for stmt, _ in self.filter(keys, min_max_id_stmt):
+            result = (await self._session.execute(stmt)).first()
+            if result is None:
+                rvs.append(None)
+            else:
+                min_id, max_id = result
+                rvs.append(MinMaxIds(min_id, max_id))
+        return rvs
 
 
 class RelatedEntityLoader(Generic[_R, _N], DataLoader[int, _N]):
