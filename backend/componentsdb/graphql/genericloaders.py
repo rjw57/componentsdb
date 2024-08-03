@@ -30,10 +30,8 @@ def select_after_uuid(
     subquery = (
         sa.select(model.id).where(model.uuid == uuid).order_by(model.id.asc()).scalar_subquery()
     )
-    base_select = (
-        base_select if base_select is not None else sa.select(model).order_by(model.id.asc())
-    )
-    return base_select.where(model.id > subquery)
+    base_select = base_select if base_select is not None else sa.select(model)
+    return base_select.where(model.id > subquery).order_by(model.id.asc())
 
 
 def uuid_from_cursor(cursor: str) -> UUID:
@@ -173,13 +171,15 @@ class EntityConnectionFactory(Generic[_R, _N], ConnectionFactory[None, _N]):
         self.model = sa.inspect(mapper).entity
         self.node_factory = node_factory
 
+    def base_select(self) -> sa.Select[_R]:
+        return sa.select(self.model).order_by(self.model.id.asc())
+
     async def _load_edges(self, keys: list[tuple[None, PaginationParams]]) -> list[list[Edge[_N]]]:
         rvs: list[list[Edge[_N]]] = []
         for k, p in keys:
-            if p.after is None:
-                stmt = sa.select(self.model).order_by(self.model.id)
-            else:
-                stmt = select_after_uuid(self.model, uuid_from_cursor(p.after))
+            stmt = self.base_select()
+            if p.after is not None:
+                stmt = select_after_uuid(self.model, uuid_from_cursor(p.after), base_select=stmt)
             stmt = stmt.limit(p.first if p.first is not None else DEFAULT_LIMIT)
             cabinets = (await self._session.execute(stmt)).scalars().all()
             rvs.append(
