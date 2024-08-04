@@ -8,6 +8,7 @@ from uuid import UUID
 
 import sqlalchemy as sa
 import strawberry
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 from strawberry.dataloader import DataLoader
 
@@ -17,13 +18,15 @@ from .paginationtypes import (
     DEFAULT_LIMIT,
     Connection,
     Edge,
-    MinMaxIds,
+    LoadEdgesResult,
     PaginationParams,
 )
 
 _R = TypeVar("_R", bound=dbm.ResourceMixin)
 _N = TypeVar("_N", bound="types.Node")
 _K = TypeVar("_K")
+
+LOG = structlog.get_logger()
 
 
 class SelectDirection(enum.Enum):
@@ -78,16 +81,14 @@ def cursor_from_uuid(uuid_: UUID) -> str:
 class ConnectionFactory(Generic[_K, _N], metaclass=ABCMeta):
     _session: AsyncSession
     _session_lock: asyncio.Lock
-    _edges_loader: DataLoader[tuple[Any, PaginationParams], list[Edge[_N]]]
-    _count_loader: DataLoader[Any, int]
-    _min_max_ids_loader: DataLoader[Any, MinMaxIds]
+    _edges_loader: DataLoader[tuple[_K, PaginationParams], LoadEdgesResult[_N]]
+    _count_loader: DataLoader[_K, int]
 
     def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
         self._session = session
         self._session_lock = session_lock
         self._edges_loader = DataLoader(load_fn=self._load_edges)
         self._count_loader = DataLoader(load_fn=self._load_counts)
-        self._min_max_ids_loader = DataLoader(load_fn=self._load_min_max_ids)
 
     def make_connection(self, key: _K, pagination_params: PaginationParams) -> Connection[_N]:
         return Connection[_N](
@@ -95,19 +96,16 @@ class ConnectionFactory(Generic[_K, _N], metaclass=ABCMeta):
             pagination_params=pagination_params,
             edges_loader=self._edges_loader,
             count_loader=self._count_loader,
-            min_max_ids_loader=self._min_max_ids_loader,
         )
 
     @abstractmethod
-    async def _load_edges(self, keys: list[tuple[_K, PaginationParams]]) -> list[list[Edge[_N]]]:
+    async def _load_edges(
+        self, keys: Sequence[tuple[_K, PaginationParams]]
+    ) -> Sequence[LoadEdgesResult[_N]]:
         pass  # pragma: no cover
 
     @abstractmethod
-    async def _load_counts(self, keys: list[_K]) -> list[int]:
-        pass  # pragma: no cover
-
-    @abstractmethod
-    async def _load_min_max_ids(self, keys: list[_K]) -> list[Optional[MinMaxIds]]:
+    async def _load_counts(self, keys: Sequence[_K]) -> Sequence[int]:
         pass  # pragma: no cover
 
 
@@ -137,23 +135,23 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         self.foreign_key_column = self.relationship.property.local_remote_pairs[0][1]
         self.node_factory = node_factory
 
-    async def _load_edges(self, keys: list[tuple[int, PaginationParams]]) -> list[list[Edge[_N]]]:
+    async def _load_edges(
+        self, keys: Sequence[tuple[int, PaginationParams]]
+    ) -> Sequence[LoadEdgesResult[_N]]:
         if len(keys) == 0:
             return []
 
         sub_stmts: list[sa.Select] = []
-        for key_idx, (cabinet_id, p) in enumerate(keys):
-            first = p.first if p.first is not None else DEFAULT_LIMIT
-            stmt = (
-                sa.select(self.entity_model, sa.literal(key_idx).label("key_idx"))
-                .where(self.foreign_key_column == cabinet_id)
-                .order_by(self.entity_model.id.asc())
+        for key_idx, (entity_id, p) in enumerate(keys):
+            first = max(1, p.first) if p.first is not None else DEFAULT_LIMIT
+            stmt = sa.select(self.entity_model, sa.literal(key_idx).label("key_idx")).where(
+                self.foreign_key_column == entity_id
             )
             if p.after is not None:
                 stmt = select_beyond_uuid(
                     self.entity_model, uuid_from_cursor(p.after), base_select=stmt
                 )
-            stmt = stmt.limit(first)
+            stmt = stmt.order_by(self.entity_model.id.asc()).limit(first)
             sub_stmts.append(stmt)
         stmt = sa.select(self.entity_model, sa.literal_column("key_idx")).from_statement(
             sa.union_all(*sub_stmts)
@@ -164,18 +162,42 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
             for d, key_idx in await self._session.execute(stmt):
                 db_entities_by_key_idx[key_idx].append(d)
 
-        return [
-            [
-                Edge(
-                    cursor=cursor_from_uuid(scalar.uuid),
-                    node=self.node_factory(scalar),
-                )
-                for scalar in db_entities_by_key_idx[key_idx]
-            ]
-            for key_idx, (cabinet_id, _) in enumerate(keys)
+        db_entity_pages = [db_entities_by_key_idx[key_idx] for key_idx, _ in enumerate(keys)]
+        has_more_stmts = [
+            sa.select(
+                select_beyond_uuid(
+                    self.entity_model,
+                    entities[0].uuid if len(entities) > 0 else None,
+                    direction=SelectDirection.BEFORE,
+                ).exists(),
+                select_beyond_uuid(
+                    self.entity_model,
+                    entities[-1].uuid if len(entities) > 0 else None,
+                    direction=SelectDirection.AFTER,
+                ).exists(),
+            )
+            for entities in db_entity_pages
         ]
 
-    async def _load_counts(self, keys: list[int]) -> list[int]:
+        async with self._session_lock:
+            has_more_results = await self._session.execute(sa.union_all(*has_more_stmts))
+
+        return [
+            LoadEdgesResult(
+                edges=[
+                    Edge(
+                        cursor=cursor_from_uuid(scalar.uuid),
+                        node=self.node_factory(scalar),
+                    )
+                    for scalar in db_entities_by_key_idx[key_idx]
+                ],
+                has_next_page=has_next_page,
+                has_previous_page=has_previous_page,
+            )
+            for key_idx, (has_previous_page, has_next_page) in enumerate(has_more_results)
+        ]
+
+    async def _load_counts(self, keys: Sequence[int]) -> Sequence[int]:
         stmt = (
             sa.select(self.foreign_key_column, sa.func.count(self.entity_model.id))
             .group_by(self.foreign_key_column)
@@ -184,23 +206,6 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         async with self._session_lock:
             counts_by_id = {id_: count for id_, count in (await self._session.execute(stmt)).all()}
         return [counts_by_id.get(id_, 0) for id_ in keys]
-
-    async def _load_min_max_ids(self, keys: list[int]) -> list[Optional[MinMaxIds]]:
-        stmt = (
-            sa.select(
-                self.foreign_key_column,
-                sa.func.min(self.entity_model.id),
-                sa.func.max(self.entity_model.id),
-            )
-            .group_by(self.foreign_key_column)
-            .having(self.foreign_key_column.in_(keys))
-        )
-        async with self._session_lock:
-            min_max_by_id = {
-                id_: MinMaxIds(min_, max_)
-                for id_, min_, max_ in (await self._session.execute(stmt)).all()
-            }
-        return [min_max_by_id.get(id_, None) for id_ in keys]
 
 
 class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
@@ -233,36 +238,79 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
         "For each key, filter the select statement passed to match the required key."
         return [stmt for _ in keys]
 
-    async def _load_edges(self, keys: list[tuple[_K, PaginationParams]]) -> list[list[Edge[_N]]]:
-        rvs: list[list[Edge[_N]]] = []
-        stmts_for_keys = self.filter([k for k, _ in keys], sa.select(self.model))
-        for (k, p), stmt, ordering_key in zip(
-            keys, stmts_for_keys, self.ordering_keys([k for k, _ in keys])
+    async def _load_edges(
+        self, keys: Sequence[tuple[_K, PaginationParams]]
+    ) -> Sequence[LoadEdgesResult[_N]]:
+        rvs: list[LoadEdgesResult[_N]] = []
+
+        keys_only = [k for k, _ in keys]
+        filtered_selects = self.filter(keys_only, sa.select(self.model))
+        ordering_keys = self.ordering_keys(keys_only)
+
+        for (key, pagination_params), filtered_stmt, ordering_key in zip(
+            keys, filtered_selects, ordering_keys
         ):
-            stmt = stmt.order_by(ordering_key, self.model.id)
-            if p.after is not None:
-                stmt = select_beyond_uuid(
+            paginated_stmt = filtered_stmt
+            if pagination_params.after is not None:
+                paginated_stmt = select_beyond_uuid(
                     self.model,
-                    uuid_from_cursor(p.after),
-                    base_select=stmt,
+                    uuid_from_cursor(pagination_params.after),
+                    base_select=paginated_stmt,
                     ordering_key=ordering_key,
                 )
-            stmt = stmt.limit(p.first if p.first is not None else DEFAULT_LIMIT)
+            first_limit = (
+                max(1, pagination_params.first)
+                if pagination_params.first is not None
+                else DEFAULT_LIMIT
+            )
+            paginated_stmt = paginated_stmt.order_by(
+                ordering_key.asc(), self.model.id.asc()
+            ).limit(first_limit)
+
             async with self._session_lock:
-                cabinets = (await self._session.execute(stmt)).scalars()
+                cabinets = list((await self._session.execute(paginated_stmt)).scalars())
+                if len(cabinets) > 0:
+                    has_previous_page, has_next_page = (
+                        await self._session.execute(
+                            sa.select(
+                                select_beyond_uuid(
+                                    self.model,
+                                    cabinets[0].uuid,
+                                    base_select=filtered_stmt,
+                                    ordering_key=ordering_key,
+                                    direction=SelectDirection.BEFORE,
+                                ).exists(),
+                                select_beyond_uuid(
+                                    self.model,
+                                    cabinets[-1].uuid,
+                                    base_select=filtered_stmt,
+                                    ordering_key=ordering_key,
+                                    direction=SelectDirection.AFTER,
+                                ).exists(),
+                            )
+                        )
+                    ).first()
+                else:
+                    has_previous_page = False
+                    has_next_page = False
+
             rvs.append(
-                [
-                    Edge(
-                        cursor=cursor_from_uuid(c.uuid),
-                        node=self.node_factory(c),
-                    )
-                    for c in cabinets
-                ]
+                LoadEdgesResult(
+                    edges=[
+                        Edge(
+                            cursor=cursor_from_uuid(c.uuid),
+                            node=self.node_factory(c),
+                        )
+                        for c in cabinets
+                    ],
+                    has_previous_page=has_previous_page,
+                    has_next_page=has_next_page,
+                )
             )
 
         return rvs
 
-    async def _load_counts(self, keys: list[_K]) -> list[int]:
+    async def _load_counts(self, keys: Sequence[_K]) -> Sequence[int]:
         # TODO: there may be some way to coalesce this into a single statement?
         count_stmt = sa.select(sa.func.count()).select_from(self.model)
         async with self._session_lock:
@@ -270,25 +318,6 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
                 (await self._session.execute(stmt)).scalar_one()
                 for stmt in self.filter(keys, count_stmt)
             ]
-
-    async def _load_min_max_ids(self, keys: list[_K]) -> list[Optional[MinMaxIds]]:
-        # TODO: there may be some way to coalesce this into a single statement?
-        rvs: list[Optional[MinMaxIds]] = []
-        for key, ordering_key in zip(keys, self.ordering_keys(keys)):
-            stmt = self.filter(
-                [key],
-                sa.select(sa.func.min(self.model.id), sa.func.max(self.model.id)).select_from(
-                    self.model
-                ),
-            )[0]
-            async with self._session_lock:
-                result = (await self._session.execute(stmt)).first()
-            if result is None:
-                rvs.append(None)
-            else:
-                min_id, max_id = result
-                rvs.append(MinMaxIds(min_id, max_id))
-        return rvs
 
 
 class RelatedEntityLoader(Generic[_R, _N], DataLoader[int, _N]):
@@ -315,14 +344,14 @@ class RelatedEntityLoader(Generic[_R, _N], DataLoader[int, _N]):
         self.model = sa.inspect(mapper).entity
         self.node_factory = node_factory
 
-    async def _load(self, keys: list[int]) -> list[_N]:
+    async def _load(self, keys: Sequence[int]) -> Sequence[_N]:
         stmt = sa.select(self.model).where(self.model.id.in_(keys)).order_by(self.model.id.asc())
         async with self.session_lock:
             entities_by_key = {o.id: o for o in (await self.session.execute(stmt)).scalars()}
         return [self.node_factory(entities_by_key[k]) for k in keys]
 
 
-class EntityLoader(Generic[_R, _N], DataLoader[strawberry.ID, _N]):
+class EntityLoader(Generic[_R, _N], DataLoader[strawberry.ID, Optional[_N]]):
     """
     A DataLoader which can load database entities given their GraphQL id. If no matching object
     exists, None is returned.
@@ -346,7 +375,7 @@ class EntityLoader(Generic[_R, _N], DataLoader[strawberry.ID, _N]):
         self.model = sa.inspect(mapper).entity
         self.node_factory = node_factory
 
-    async def _load(self, keys: list[strawberry.ID]) -> list[Optional[_N]]:
+    async def _load(self, keys: list[strawberry.ID]) -> Sequence[Optional[_N]]:
         stmt = sa.select(self.model).where(self.model.uuid.in_(keys)).order_by(self.model.id.asc())
         async with self.session_lock:
             entities_by_key = {

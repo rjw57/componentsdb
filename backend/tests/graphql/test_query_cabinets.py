@@ -12,7 +12,7 @@ from ..asserts import expected_sql_query_count, expected_sql_query_maximum_count
 async def test_basic_list(db_session, cabinets, context):
     cabinets = sorted(cabinets, key=lambda c: c.id)
     query = "query { cabinets { nodes { id } edges { cursor node { id } } } }"
-    with expected_sql_query_count(db_session, 1):
+    with expected_sql_query_count(db_session, 2):
         result = await schema.execute(query, context_value=context)
         assert result.errors is None
     nodes = result.data["cabinets"]["nodes"]
@@ -80,7 +80,7 @@ async def test_basic_drawers_query(db_session, cabinets, drawers, context):
         }
     }
     """
-    with expected_sql_query_maximum_count(db_session, 3):
+    with expected_sql_query_maximum_count(db_session, 6):
         result = await schema.execute(query, context_value=context)
         assert result.errors is None
     for c in result.data["cabinets"]["nodes"]:
@@ -117,7 +117,7 @@ async def test_paginated_drawers_query(db_session, cabinets, drawers, context, f
     cabinet_id = None
     actual_ids = set()
     for _ in range(200):
-        with expected_sql_query_maximum_count(db_session, 3):
+        with expected_sql_query_maximum_count(db_session, 5):
             result = await schema.execute(
                 query, context_value=context, variable_values={"after": after, "first": first}
             )
@@ -275,7 +275,7 @@ async def test_cabinet_drawers_backref(db_session, cabinets, drawers, context):
         }
     }
     """
-    with expected_sql_query_maximum_count(db_session, 3):
+    with expected_sql_query_maximum_count(db_session, 5):
         result = await schema.execute(query, context_value=context)
         assert result.errors is None
         assert result.data is not None
@@ -312,7 +312,7 @@ async def test_basic_collections_query(db_session, all_fakes, context):
         }
     }
     """
-    with expected_sql_query_maximum_count(db_session, 4):
+    with expected_sql_query_maximum_count(db_session, 10):
         result = await schema.execute(query, context_value=context)
         assert result.errors is None
         assert result.data is not None
@@ -346,7 +346,7 @@ async def test_extreme_back_reference_query(db_session, all_fakes, context):
         }
     }
     """
-    with expected_sql_query_maximum_count(db_session, 7):
+    with expected_sql_query_maximum_count(db_session, 12):
         result = await schema.execute(query, context_value=context)
         assert result.errors is None
         assert result.data is not None
