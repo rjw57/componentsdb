@@ -1,3 +1,5 @@
+import asyncio
+
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,56 +36,56 @@ def component_node_factory(o: dbm.Component) -> "types.Component":
 
 
 class CabinetLoader(EntityLoader[dbm.Cabinet, "types.Cabinet"]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Cabinet, cabinet_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Cabinet, cabinet_node_factory)
 
 
 class RelatedCabinetLoader(RelatedEntityLoader[dbm.Cabinet, "types.Cabinet"]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Cabinet, cabinet_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Cabinet, cabinet_node_factory)
 
 
 class RelatedDrawerLoader(RelatedEntityLoader[dbm.Drawer, "types.Drawer"]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Drawer, drawer_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Drawer, drawer_node_factory)
 
 
 class RelatedComponentLoader(RelatedEntityLoader[dbm.Component, "types.Component"]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Component, component_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Component, component_node_factory)
 
 
 class CabinetConnectionFactory(EntityConnectionFactory[dbm.Cabinet, "types.Cabinet", None]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Cabinet, cabinet_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Cabinet, cabinet_node_factory)
 
 
 class CabinetDrawerConnectionFactory(
     OneToManyRelationshipConnectionFactory[dbm.Drawer, "types.Drawer"]
 ):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Cabinet.drawers, drawer_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Cabinet.drawers, drawer_node_factory)
 
 
 class DrawerCollectionConnectionFactory(
     OneToManyRelationshipConnectionFactory[dbm.Collection, "types.Collection"]
 ):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Drawer.collections, collection_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Drawer.collections, collection_node_factory)
 
 
 class ComponentCollectionConnectionFactory(
     OneToManyRelationshipConnectionFactory[dbm.Collection, "types.Collection"]
 ):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Component.collections, collection_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Component.collections, collection_node_factory)
 
 
 class ComponentConnectionFactory(
     EntityConnectionFactory[dbm.Component, "types.Component", "types.ComponentQueryKey"]
 ):
-    def __init__(self, session: AsyncSession):
-        super().__init__(session, dbm.Component, component_node_factory)
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Component, component_node_factory)
 
     def _similarity(self, key: "types.ComponentQueryKey"):
         return sa.func.word_similarity(sa.func.lower(key.search), dbm.Component.search_text)
