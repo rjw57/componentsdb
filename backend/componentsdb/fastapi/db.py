@@ -44,14 +44,17 @@ def get_db_engine(settings: Settings = Depends(load_settings)):
     return _get_db_engine(settings.sqlalchemy_db_url)
 
 
-async def get_db_session(request: Request, engine: AsyncEngine = Depends(get_db_engine)):
+def get_session_maker(engine: AsyncEngine = Depends(get_db_engine)):
+    return async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
+
+
+async def get_db_session(request: Request, session_maker=Depends(get_session_maker)):
     request.state.sql_execution_count = 0
-    session_maker = async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
 
     def on_do_orm_execute(orm_execute_state):
         request.state.sql_execution_count += 1
 
-    async with session_maker.begin() as session:
+    async with session_maker() as session, session.begin():
         event.listen(session.sync_session, "do_orm_execute", on_do_orm_execute)
         yield session
     event.remove(session.sync_session, "do_orm_execute", on_do_orm_execute)
