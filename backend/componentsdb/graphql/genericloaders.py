@@ -268,21 +268,21 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
             ).limit(first_limit)
 
             async with self._session_lock:
-                cabinets = list((await self._session.execute(paginated_stmt)).scalars())
-                if len(cabinets) > 0:
+                entities = list((await self._session.execute(paginated_stmt)).scalars())
+                if len(entities) > 0:
                     has_previous_page, has_next_page = (
                         await self._session.execute(
                             sa.select(
                                 select_beyond_uuid(
                                     self.model,
-                                    cabinets[0].uuid,
+                                    entities[0].uuid,
                                     base_select=filtered_stmt,
                                     ordering_key=ordering_key,
                                     direction=SelectDirection.BEFORE,
                                 ).exists(),
                                 select_beyond_uuid(
                                     self.model,
-                                    cabinets[-1].uuid,
+                                    entities[-1].uuid,
                                     base_select=filtered_stmt,
                                     ordering_key=ordering_key,
                                     direction=SelectDirection.AFTER,
@@ -301,7 +301,7 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
                             cursor=cursor_from_uuid(c.uuid),
                             node=self.node_factory(c),
                         )
-                        for c in cabinets
+                        for c in entities
                     ],
                     has_previous_page=has_previous_page,
                     has_next_page=has_next_page,

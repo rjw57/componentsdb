@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 
@@ -105,33 +106,50 @@ async def db_session(db_engine):
         await session.rollback()
 
 
+@pytest.fixture
+def db_session_lock():
+    return asyncio.Lock()
+
+
 @pytest_asyncio.fixture
-async def cabinets(faker: Faker, db_session: AsyncSession):
+async def cabinets(faker: Faker, db_session: AsyncSession, db_session_lock: asyncio.Lock):
     cabinets = [f.fake_cabinet(faker) for _ in range(40)]
     db_session.add_all(cabinets)
-    await db_session.flush()
+    async with db_session_lock:
+        await db_session.flush()
     return cabinets
 
 
 @pytest_asyncio.fixture
-async def components(faker: Faker, db_session: AsyncSession):
+async def components(faker: Faker, db_session: AsyncSession, db_session_lock: asyncio.Lock):
     components = [f.fake_component(faker) for _ in range(200)]
     db_session.add_all(components)
-    await db_session.flush()
+    async with db_session_lock:
+        await db_session.flush()
     return components
 
 
 @pytest_asyncio.fixture
-async def drawers(faker: Faker, cabinets: list[m.Cabinet], db_session: AsyncSession):
+async def drawers(
+    faker: Faker,
+    cabinets: list[m.Cabinet],
+    db_session: AsyncSession,
+    db_session_lock: asyncio.Lock,
+):
     drawers = [f.fake_drawer(faker, cabinet=faker.random_element(cabinets)) for _ in range(100)]
     db_session.add_all(drawers)
-    await db_session.flush()
+    async with db_session_lock:
+        await db_session.flush()
     return drawers
 
 
 @pytest_asyncio.fixture
 async def collections(
-    faker: Faker, drawers: list[m.Drawer], components: list[m.Component], db_session: AsyncSession
+    faker: Faker,
+    drawers: list[m.Drawer],
+    components: list[m.Component],
+    db_session: AsyncSession,
+    db_session_lock: asyncio.Lock,
 ):
     collections = [
         f.fake_collection(
@@ -140,36 +158,44 @@ async def collections(
         for _ in range(50)
     ]
     db_session.add_all(collections)
-    await db_session.flush()
+    async with db_session_lock:
+        await db_session.flush()
     return collections
 
 
 @pytest_asyncio.fixture
-async def users(faker: Faker, db_session: AsyncSession):
+async def users(faker: Faker, db_session: AsyncSession, db_session_lock: asyncio.Lock):
     users = [f.fake_user(faker) for _ in range(50)]
     db_session.add_all(users)
-    await db_session.flush()
+    async with db_session_lock:
+        await db_session.flush()
     return users
 
 
 @pytest_asyncio.fixture
-async def access_tokens(faker: Faker, db_session: AsyncSession, users: list[m.User]):
+async def access_tokens(
+    faker: Faker, db_session: AsyncSession, db_session_lock: asyncio.Lock, users: list[m.User]
+):
     access_tokens = [
         f.fake_access_token(faker, user=faker.random_element(users)) for _ in range(100)
     ]
     db_session.add_all(access_tokens)
-    await db_session.flush()
+    async with db_session_lock:
+        await db_session.flush()
     return users
 
 
 @pytest_asyncio.fixture
-async def federated_user_credentials(faker: Faker, db_session: AsyncSession, users: list[m.User]):
+async def federated_user_credentials(
+    faker: Faker, db_session: AsyncSession, db_session_lock: asyncio.Lock, users: list[m.User]
+):
     federated_user_credentials = [
         f.fake_federated_user_credential(faker, user=faker.random_element(users))
         for _ in range(50)
     ]
     db_session.add_all(federated_user_credentials)
-    await db_session.flush()
+    async with db_session_lock:
+        await db_session.flush()
     return federated_user_credentials
 
 
