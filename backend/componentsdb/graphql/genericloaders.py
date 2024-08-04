@@ -29,17 +29,23 @@ def select_after_uuid(
     uuid: UUID,
     *,
     base_select: Optional[sa.Select[tuple[_R]]] = None,
-    ordering_key: Any = None
+    ordering_key: Optional[sa.Numeric] = None,
 ) -> sa.Select[tuple[_R]]:
-    ordering_key = model.id if ordering_key is None else ordering_key
-    subquery = (
-        sa.select(ordering_key)
-        .where(model.uuid == uuid)
-        .order_by(ordering_key.asc(), model.id)
-        .scalar_subquery()
-    )
+    id_subquery = sa.select(model.id).where(model.uuid == uuid).scalar_subquery()
+    ok_subquery = sa.select(ordering_key).where(model.uuid == uuid).scalar_subquery()
     base_select = base_select if base_select is not None else sa.select(model)
-    return base_select.where(ordering_key > subquery).order_by(ordering_key.asc())
+    if ordering_key is not None and ordering_key != model.id:
+        # The logic here is that we generally want the rows *after* the one matching the ordering
+        # key but the ordering key may not provide a total ordering so we tie-break when the
+        # ordering key matches with the model id.
+        return base_select.order_by(ordering_key, model.id).where(
+            sa.or_(
+                ordering_key > ok_subquery,
+                sa.and_(ordering_key == ok_subquery, model.id > id_subquery),
+            )
+        )
+    else:
+        return base_select.order_by(model.id).where(model.id > id_subquery)
 
 
 def uuid_from_cursor(cursor: str) -> UUID:
@@ -179,14 +185,19 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
         self.model = sa.inspect(mapper).entity
         self.node_factory = node_factory
 
-    def filter(self, keys: list[_K], stmt: sa.Select[_R]) -> Sequence[tuple[sa.Select[_R], Any]]:
-        return [(stmt, self.model.id) for _ in keys]
+    def ordering_keys(self, keys: Sequence[_K]) -> Sequence[sa.Numeric]:
+        return [self.model.id for _ in keys]
+
+    def filter(self, keys: Sequence[_K], stmt: sa.Select[_R]) -> Sequence[sa.Select[_R]]:
+        return [stmt for _ in keys]
 
     async def _load_edges(self, keys: list[tuple[_K, PaginationParams]]) -> list[list[Edge[_N]]]:
         rvs: list[list[Edge[_N]]] = []
         stmts_for_keys = self.filter([k for k, _ in keys], sa.select(self.model))
         # TODO: ordering
-        for (k, p), (stmt, ordering_key) in zip(keys, stmts_for_keys):
+        for (k, p), stmt, ordering_key in zip(
+            keys, stmts_for_keys, self.ordering_keys([k for k, _ in keys])
+        ):
             if p.after is not None:
                 stmt = select_after_uuid(
                     self.model,
@@ -194,6 +205,8 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
                     base_select=stmt,
                     ordering_key=ordering_key,
                 )
+            else:
+                stmt = stmt.order_by(ordering_key, self.model.id)
             stmt = stmt.limit(p.first if p.first is not None else DEFAULT_LIMIT)
             cabinets = (await self._session.execute(stmt)).scalars()
             rvs.append(
@@ -210,19 +223,22 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
 
     async def _load_counts(self, keys: list[_K]) -> list[int]:
         # TODO: there may be some way to coalesce this into a single statement?
-        count_stmt = sa.select(sa.func.count(self.model.id)).select_from(self.model)
+        count_stmt = sa.select(sa.func.count()).select_from(self.model)
         return [
             (await self._session.execute(stmt)).scalar_one()
-            for stmt, _ in self.filter(keys, count_stmt)
+            for stmt in self.filter(keys, count_stmt)
         ]
 
     async def _load_min_max_ids(self, keys: list[_K]) -> list[Optional[MinMaxIds]]:
         # TODO: there may be some way to coalesce this into a single statement?
-        min_max_id_stmt = sa.select(
-            sa.func.min(self.model.id), sa.func.max(self.model.id)
-        ).select_from(self.model)
         rvs: list[Optional[MinMaxIds]] = []
-        for stmt, _ in self.filter(keys, min_max_id_stmt):
+        for key, ordering_key in zip(keys, self.ordering_keys(keys)):
+            stmt = self.filter(
+                [key],
+                sa.select(sa.func.min(self.model.id), sa.func.max(self.model.id)).select_from(
+                    self.model
+                ),
+            )[0]
             result = (await self._session.execute(stmt)).first()
             if result is None:
                 rvs.append(None)

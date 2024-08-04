@@ -24,6 +24,7 @@ def _get_db_engine(sqlalchemy_db_url: str) -> AsyncEngine:
 
     @event.listens_for(engine.sync_engine, "after_cursor_execute")
     def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+        LOG.debug("Executed SQL statement", statement=statement, executemany=executemany)
         query_start_time = conn.info.get("query_start_time", None)
         if query_start_time is None:
             return

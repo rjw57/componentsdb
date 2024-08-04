@@ -85,19 +85,21 @@ class ComponentConnectionFactory(
     def __init__(self, session: AsyncSession):
         super().__init__(session, dbm.Component, component_node_factory)
 
+    def _similarity(self, key: "types.ComponentQueryKey"):
+        return sa.func.word_similarity(sa.func.lower(key.search), dbm.Component.search_text)
+
+    def ordering_keys(self, keys):
+        return [-self._similarity(k) if k.search is not None else dbm.Component.id for k in keys]
+
     def filter(self, keys, stmt):
         threshold = 0.3
         return [
             (
-                (
-                    stmt.where(
-                        sa.func.word_similarity(sa.func.lower(k.search), dbm.Component.search_text)
-                        > threshold,
-                    )
-                    if k.search is not None
-                    else stmt
-                ),
-                sa.func.word_similarity(sa.func.lower(k.search), dbm.Component.search_text),
+                stmt.where(
+                    self._similarity(k) > threshold,
+                )
+                if k.search is not None
+                else stmt
             )
             for k in keys
         ]
