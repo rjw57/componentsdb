@@ -1,9 +1,7 @@
 ---
 import BaseLayout from "../layouts/base.astro";
-import { Card, TextInput } from "flowbite-react";
-import { HiSearch } from "react-icons/hi";
-import { BiCabinet as CabinetIcon } from "react-icons/bi";
-import { Badge } from "flowbite-react";
+
+import Search from "../components/Search";
 ---
 
 <BaseLayout>
@@ -19,115 +17,6 @@ import { Badge } from "flowbite-react";
       Start typing below to search for components in your collection
     </p>
 
-    <div class="space-y-8">
-      <TextInput
-        type="text"
-        sizing="lg"
-        autoFocus
-        placeholder="Find something"
-        icon={HiSearch}
-      />
-
-      <div class="grid grid-cols-2 gap-4">
-        <Card>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-row">
-              <div class="flex-grow">
-                <p
-                  class="text-lg truncate font-medium text-gray-900 dark:text-white"
-                >
-                  74HC00
-                </p>
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                  Quad 2-input NAND gate
-                </p>
-              </div>
-              <div class="text-right">
-                <p class="text-lg font-medium text-gray-900 dark:text-white">
-                  A56
-                </p>
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                  Albion
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div class="space-y-4">
-            <div>
-            <div class="flex flex-row gap-4 items-center justify-between">
-              <div
-                class="text-lg font-medium text-gray-900 dark:text-white truncate"
-              >
-                74HC00
-              </div>
-              <div class="text-lg font-medium text-gray-900 dark:text-white">
-                B4
-              </div>
-            </div>
-            <div class="truncate text-sm text-gray-500 dark:text-gray-400">
-              A long description which will probably need to wrap. A long
-              description which will probably need to wrap. A long description
-              which will probably need to wrap. A long description which will
-              probably need to wrap.
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <Badge icon={CabinetIcon} size="xs" color="gray">Barondunum</Badge>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-row">
-              <div class="flex-grow">
-                <p
-                  class="text-lg truncate font-medium text-gray-900 dark:text-white"
-                >
-                  74HC00
-                </p>
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                  Quad 2-input NAND gate
-                </p>
-              </div>
-              <div class="text-right">
-                <p class="text-lg font-medium text-gray-900 dark:text-white">
-                  A56
-                </p>
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                  Albion
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-row">
-              <div class="flex-grow">
-                <p
-                  class="text-lg truncate font-medium text-gray-900 dark:text-white"
-                >
-                  74HC00
-                </p>
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                  Quad 2-input NAND gate
-                </p>
-              </div>
-              <div class="text-right">
-                <p class="text-lg font-medium text-gray-900 dark:text-white">
-                  A56
-                </p>
-                <p class="truncate text-sm text-gray-500 dark:text-gray-400">
-                  Albion
-                </p>
-              </div>
-            </div>
-          </div>
-        </Card>
-        <Card> foo </Card>
-      </div>
-    </div>
+    <Search client:only="react" />
   </div>
 </BaseLayout>

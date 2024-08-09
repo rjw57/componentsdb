@@ -13,6 +13,7 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  * Therefore it is highly recommended to use the babel or swc plugin for production.
  */
 const documents = {
+    "\n  query componentSearch($search: String!) {\n    components(search: $search) {\n      nodes {\n        code\n        description\n        collections {\n          nodes {\n            count\n            drawer {\n              label\n              cabinet {\n                name\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n": types.ComponentSearchDocument,
     "\n  mutation credentialsFromFederatedCredential($input: CredentialsFromFederatedCredentialInput!) {\n    auth {\n      credentialsFromFederatedCredential(input: $input) {\n        __typename\n        ... on UserCredentials {\n          user {\n            id\n            displayName\n            avatarUrl\n            email\n          }\n          accessToken\n          refreshToken\n          expiresIn\n        }\n        ... on AuthError {\n          error\n          detail\n        }\n      }\n    }\n  }\n": types.CredentialsFromFederatedCredentialDocument,
     "\n  query federatedIdentityProviders {\n    auth {\n      federatedIdentityProviders {\n        name\n        issuer\n        audience\n      }\n    }\n  }\n": types.FederatedIdentityProvidersDocument,
     "\n  mutation refreshCredentials($input: RefreshCredentialsInput!) {\n    auth {\n      refreshCredentials(input: $input) {\n        __typename\n        ... on UserCredentials {\n          user {\n            id\n            displayName\n            avatarUrl\n            email\n          }\n          accessToken\n          refreshToken\n          expiresIn\n        }\n        ... on AuthError {\n          error\n          detail\n        }\n      }\n    }\n  }\n": types.RefreshCredentialsDocument,
@@ -32,6 +33,10 @@ const documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query componentSearch($search: String!) {\n    components(search: $search) {\n      nodes {\n        code\n        description\n        collections {\n          nodes {\n            count\n            drawer {\n              label\n              cabinet {\n                name\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query componentSearch($search: String!) {\n    components(search: $search) {\n      nodes {\n        code\n        description\n        collections {\n          nodes {\n            count\n            drawer {\n              label\n              cabinet {\n                name\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
