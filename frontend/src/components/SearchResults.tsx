@@ -30,7 +30,7 @@ export const SearchResultCard: React.FC<SearchResultCardProps> = ({
         </div>
         <div className="text-xl font-medium text-gray-900 dark:text-white text-right">
           {drawerLabel}
-          <div className="text-sm text-gray-400 dark:text-gray-600">{drawerCabinetName}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">{drawerCabinetName}</div>
         </div>
       </div>
     </div>

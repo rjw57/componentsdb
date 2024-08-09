@@ -1,27 +1,28 @@
 import React from "react";
-import { TextInput } from "flowbite-react";
+import { TextInput, Button } from "flowbite-react";
 import { HiSearch as SearchIcon } from "react-icons/hi";
-import { useDebounceValue } from "usehooks-ts";
 
 import SearchResults from "./SearchResults";
 import useComponentSearch from "../hooks/useComponentSearch";
 import useApolloClient from "../hooks/useApolloClient";
+import { useDebounceValue } from "usehooks-ts";
 
 export const Search: React.FC = () => {
   const [searchText, setSearchText] = React.useState<string>("");
-  const [debouncedSearchText, setDebouncedSearchText] = useDebounceValue("", 500);
-  const shouldSearch = debouncedSearchText.length >= 2;
+  const [currentSearch, setCurrentSearch] = React.useState<string>();
+  const [debouncedLoading, setDebouncedLoading] = useDebounceValue(false, 200);
+  const canSearch = searchText.length > 0;
   const client = useApolloClient();
 
-  React.useEffect(() => {
-    setDebouncedSearchText(searchText);
-  }, [searchText, setDebouncedSearchText]);
-
-  const { data } = useComponentSearch({
+  const { data, loading } = useComponentSearch({
     client,
-    variables: { search: debouncedSearchText },
-    skip: !shouldSearch,
+    variables: { search: `${currentSearch}` },
+    skip: !currentSearch,
   });
+
+  React.useEffect(() => {
+    setDebouncedLoading(loading);
+  }, [loading, setDebouncedLoading]);
 
   const results = (data?.components.nodes ?? [])
     .map(({ code, description, collections }) =>
@@ -47,18 +48,35 @@ export const Search: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <TextInput
-        shadow
-        type="text"
-        sizing="lg"
-        autoFocus
-        placeholder="Find something"
-        icon={SearchIcon}
-        value={searchText}
-        onChange={({ target: { value } }) => {
-          setSearchText(value);
+      <form
+        onSubmit={(e) => {
+          if (canSearch) {
+            setCurrentSearch(searchText);
+          }
+          e.preventDefault();
         }}
-      />
+        className="flex flex-row gap-4"
+      >
+        <TextInput
+          className="flex-1"
+          shadow
+          type="text"
+          autoFocus
+          placeholder="Find something"
+          value={searchText}
+          icon={SearchIcon}
+          onChange={({ target: { value } }) => {
+            setSearchText(value);
+          }}
+        />
+        <Button
+          type="submit"
+          isProcessing={debouncedLoading}
+          disabled={!canSearch || debouncedLoading}
+        >
+          Search
+        </Button>
+      </form>
 
       <SearchResults results={results} />
     </div>

@@ -1,6 +1,5 @@
 ---
 import BaseLayout from "../layouts/base.astro";
-
 import Search from "../components/Search";
 ---
 
@@ -14,9 +13,9 @@ import Search from "../components/Search";
     <p
       class="mb-8 text-lg font-normal text-gray-500 lg:text-xl dark:text-gray-400"
     >
-      Start typing below to search for components in your collection
+      Search below to find components in your collection
     </p>
 
-    <Search client:only="react" />
+    <Search client:load />
   </div>
 </BaseLayout>
