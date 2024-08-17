@@ -22,7 +22,8 @@ from sqlalchemy.orm import (
 
 # The 'type:ignore' is required because mypy doesn't understand that "kw_only" can be passed to
 # MappedAsDataclass.
-class Base(MappedAsDataclass, AsyncAttrs, DeclarativeBase, kw_only=True):  # type:ignore[call-arg]
+class Base(MappedAsDataclass, AsyncAttrs, DeclarativeBase, kw_only=True):
+    # type:ignore[call-arg]
     pass
 
 
@@ -219,3 +220,59 @@ sa.Index(
     FederatedUserCredentialUse.claims,
     postgresql_using="gin",
 )
+
+
+class Role(Base):
+    __tablename__ = "roles"
+
+    name: Mapped[str] = mapped_column(primary_key=True)
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    name: Mapped[str] = mapped_column(primary_key=True)
+
+
+class RolePermissionBinding(Base):
+    __tablename__ = "role_permission_bindings"
+
+    role_name: Mapped[str] = mapped_column(sa.ForeignKey("roles.name"), primary_key=True)
+    permission_name: Mapped[str] = mapped_column(
+        sa.ForeignKey("permissions.name"), primary_key=True
+    )
+
+    role: Mapped[Role] = relationship(cascade="all, delete")
+    permission: Mapped[Permission] = relationship(cascade="all, delete")
+
+
+class UserGlobalRoleBinding(Base, _TimestampsMixin):
+    __tablename__ = "user_global_role_bindings"
+
+    user_id: Mapped[int] = mapped_column(
+        sa.BigInteger, sa.ForeignKey("users.id"), default=None, primary_key=True
+    )
+    role_name: Mapped[str] = mapped_column(
+        sa.ForeignKey("roles.name"), default=None, primary_key=True
+    )
+
+    user: Mapped[User] = relationship(default=None, repr=False, cascade="all, delete")
+    role: Mapped[Role] = relationship(default=None, repr=False, cascade="all, delete")
+
+
+class UserCabinetRoleBinding(Base, _TimestampsMixin):
+    __tablename__ = "user_cabinet_role_bindings"
+
+    user_id: Mapped[int] = mapped_column(
+        sa.BigInteger, sa.ForeignKey("users.id"), default=None, primary_key=True
+    )
+    cabinet_id: Mapped[int] = mapped_column(
+        sa.BigInteger, sa.ForeignKey("cabinets.id"), default=None, primary_key=True
+    )
+    role_name: Mapped[str] = mapped_column(
+        sa.ForeignKey("roles.name"), default=None, primary_key=True
+    )
+
+    user: Mapped[User] = relationship(default=None, repr=False, cascade="all, delete")
+    role: Mapped[Role] = relationship(default=None, repr=False, cascade="all, delete")
+    cabinet: Mapped[Cabinet] = relationship(default=None, repr=False, cascade="all, delete")
