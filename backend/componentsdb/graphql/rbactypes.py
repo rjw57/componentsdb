@@ -1,50 +1,39 @@
-import sqlalchemy as sa
-import sqlalchemy.orm as saorm
+from typing import Optional
+
 import strawberry
 
-from ..db import models as dbm
 from . import context
+from .paginationtypes import Connection, Node, PaginationParams
 
 
 @strawberry.type
-class Permission:
-    id: strawberry.ID
+class Permission(Node):
+    pass
 
 
 @strawberry.type
-class Role:
-    id: strawberry.ID
-    permissions: list[Permission]
+class Role(Node):
+    @strawberry.field
+    def permissions(
+        self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
+    ) -> "Connection[Permission]":
+        raise NotImplementedError()
 
 
 @strawberry.type
 class RBACQueries:
     @strawberry.field
-    async def permissions(self, info: strawberry.Info) -> list[Permission]:
-        db = context.get_db(info.context)
-        async with db.db_lock:
-            return [
-                Permission(id=p.name)
-                for p in (
-                    await db.db_session.execute(
-                        sa.select(dbm.Permission).order_by(dbm.Permission.name)
-                    )
-                ).scalars()
-            ]
+    async def permissions(
+        self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
+    ) -> Connection[Permission]:
+        return context.get_db(info.context).permission_connection.make_connection(
+            None, PaginationParams(after=after, first=first)
+        )
 
     @strawberry.field
-    async def roles(self, info: strawberry.Info) -> list[Role]:
-        db = context.get_db(info.context)
-        async with db.db_lock:
-            return [
-                Role(id=role.name, permissions=[Permission(id=p.name) for p in role.permissions])
-                for role in (
-                    await db.db_session.execute(
-                        sa.select(dbm.Role).options(
-                            saorm.joinedload(dbm.Role.permissions), saorm.raiseload("*")
-                        )
-                    )
-                )
-                .unique()
-                .scalars()
-            ]
+    async def roles(
+        self, info: strawberry.Info, after: Optional[str] = None, first: Optional[int] = None
+    ) -> Connection[Role]:
+        return context.get_db(info.context).role_connection.make_connection(
+            None, PaginationParams(after=after, first=first)
+        )

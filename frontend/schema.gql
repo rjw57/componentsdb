@@ -132,6 +132,18 @@ type Permission {
   id: ID!
 }
 
+type PermissionConnection {
+  count: Int!
+  edges: [PermissionEdge!]!
+  nodes: [Permission!]!
+  pageInfo: PageInfo!
+}
+
+type PermissionEdge {
+  cursor: String!
+  node: Permission!
+}
+
 type Query {
   auth: AuthQueries!
   rbac: RBACQueries!
@@ -141,8 +153,8 @@ type Query {
 }
 
 type RBACQueries {
-  permissions: [Permission!]!
-  roles: [Role!]!
+  permissions(after: String = null, first: Int = null): PermissionConnection!
+  roles(after: String = null, first: Int = null): RoleConnection!
 }
 
 input RefreshCredentialsInput {
@@ -151,7 +163,19 @@ input RefreshCredentialsInput {
 
 type Role {
   id: ID!
-  permissions: [Permission!]!
+  permissions(after: String = null, first: Int = null): PermissionConnection!
+}
+
+type RoleConnection {
+  count: Int!
+  edges: [RoleEdge!]!
+  nodes: [Role!]!
+  pageInfo: PageInfo!
+}
+
+type RoleEdge {
+  cursor: String!
+  node: Role!
 }
 
 type User {

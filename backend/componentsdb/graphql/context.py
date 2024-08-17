@@ -53,6 +53,14 @@ class DbContext:
     def component_connection(self) -> loaders.ComponentConnectionFactory:
         return loaders.ComponentConnectionFactory(self.db_session, self.db_lock)
 
+    @cached_property
+    def permission_connection(self) -> loaders.PermissionConnectionFactory:
+        return loaders.PermissionConnectionFactory(self.db_session, self.db_lock)
+
+    @cached_property
+    def role_connection(self) -> loaders.RoleConnectionFactory:
+        return loaders.RoleConnectionFactory(self.db_session, self.db_lock)
+
 
 def make_context(
     db_session: AsyncSession,

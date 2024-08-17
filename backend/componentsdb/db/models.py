@@ -222,10 +222,10 @@ sa.Index(
 )
 
 
-class Role(Base):
+class Role(Base, _UUIDMixin):
     __tablename__ = "roles"
 
-    name: Mapped[str] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(primary_key=True)
 
     permissions: Mapped[list["Permission"]] = relationship(
         secondary=lambda: RolePermissionBinding.__table__,
@@ -235,19 +235,17 @@ class Role(Base):
     )
 
 
-class Permission(Base):
+class Permission(Base, _UUIDMixin):
     __tablename__ = "permissions"
 
-    name: Mapped[str] = mapped_column(primary_key=True)
+    id: Mapped[str] = mapped_column(primary_key=True)
 
 
 class RolePermissionBinding(Base):
     __tablename__ = "role_permission_bindings"
 
-    role_name: Mapped[str] = mapped_column(sa.ForeignKey("roles.name"), primary_key=True)
-    permission_name: Mapped[str] = mapped_column(
-        sa.ForeignKey("permissions.name"), primary_key=True
-    )
+    role_id: Mapped[str] = mapped_column(sa.ForeignKey("roles.id"), primary_key=True)
+    permission_id: Mapped[str] = mapped_column(sa.ForeignKey("permissions.id"), primary_key=True)
 
 
 class UserGlobalRoleBinding(Base, _TimestampsMixin):
@@ -256,9 +254,7 @@ class UserGlobalRoleBinding(Base, _TimestampsMixin):
     user_id: Mapped[int] = mapped_column(
         sa.BigInteger, sa.ForeignKey("users.id"), default=None, primary_key=True
     )
-    role_name: Mapped[str] = mapped_column(
-        sa.ForeignKey("roles.name"), default=None, primary_key=True
-    )
+    role_id: Mapped[str] = mapped_column(sa.ForeignKey("roles.id"), default=None, primary_key=True)
 
     user: Mapped[User] = relationship(default=None, repr=False, cascade="all, delete")
     role: Mapped[Role] = relationship(default=None, repr=False, cascade="all, delete")
@@ -273,9 +269,7 @@ class UserCabinetRoleBinding(Base, _TimestampsMixin):
     cabinet_id: Mapped[int] = mapped_column(
         sa.BigInteger, sa.ForeignKey("cabinets.id"), default=None, primary_key=True
     )
-    role_name: Mapped[str] = mapped_column(
-        sa.ForeignKey("roles.name"), default=None, primary_key=True
-    )
+    role_id: Mapped[str] = mapped_column(sa.ForeignKey("roles.id"), default=None, primary_key=True)
 
     user: Mapped[User] = relationship(default=None, repr=False, cascade="all, delete")
     role: Mapped[Role] = relationship(default=None, repr=False, cascade="all, delete")

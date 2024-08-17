@@ -26,22 +26,22 @@ NEW_ROLE_PERMISSION_BINDINGS = {
 }
 
 
-roles_table = sa.sql.table("roles", sa.sql.column("name", sa.String))
-permissions_table = sa.sql.table("permissions", sa.sql.column("name", sa.String))
+roles_table = sa.sql.table("roles", sa.sql.column("id", sa.String))
+permissions_table = sa.sql.table("permissions", sa.sql.column("id", sa.String))
 role_permission_bindings_table = sa.sql.table(
     "role_permission_bindings",
-    sa.sql.column("role_name", sa.String),
-    sa.sql.column("permission_name", sa.String),
+    sa.sql.column("role_id", sa.String),
+    sa.sql.column("permission_id", sa.String),
 )
 
 
 def upgrade() -> None:
-    op.bulk_insert(roles_table, [{"name": name} for name in NEW_ROLES])
-    op.bulk_insert(permissions_table, [{"name": name} for name in NEW_PERMISSIONS])
+    op.bulk_insert(roles_table, [{"id": name} for name in NEW_ROLES])
+    op.bulk_insert(permissions_table, [{"id": name} for name in NEW_PERMISSIONS])
     op.bulk_insert(
         role_permission_bindings_table,
         [
-            {"role_name": role_name, "permission_name": permission_name}
+            {"role_id": role_name, "permission_id": permission_name}
             for role_name, permission_names in NEW_ROLE_PERMISSION_BINDINGS.items()
             for permission_name in permission_names
         ],
@@ -52,9 +52,9 @@ def downgrade() -> None:
     for role_name, permissions in NEW_ROLE_PERMISSION_BINDINGS.items():
         op.execute(
             sa.delete(role_permission_bindings_table).where(
-                role_permission_bindings_table.c.role_name == role_name,
-                role_permission_bindings_table.c.permission_name.in_(permissions),
+                role_permission_bindings_table.c.role_id == role_name,
+                role_permission_bindings_table.c.permission_id.in_(permissions),
             )
         )
-    op.execute(sa.delete(permissions_table).where(permissions_table.c.name.in_(NEW_PERMISSIONS)))
-    op.execute(sa.delete(roles_table).where(roles_table.c.name.in_(NEW_ROLES)))
+    op.execute(sa.delete(permissions_table).where(permissions_table.c.id.in_(NEW_PERMISSIONS)))
+    op.execute(sa.delete(roles_table).where(roles_table.c.id.in_(NEW_ROLES)))

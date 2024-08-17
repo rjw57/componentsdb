@@ -4,7 +4,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db import models as dbm
-from . import types
+from . import rbactypes, types
 from .genericloaders import (
     EntityConnectionFactory,
     EntityLoader,
@@ -33,6 +33,14 @@ def component_node_factory(o: dbm.Component) -> "types.Component":
         description=o.description,
         datasheet_url=o.datasheet_url,
     )
+
+
+def permission_node_factory(o: dbm.Permission) -> "rbactypes.Permission":
+    return rbactypes.Permission(db_resource=o, id=o.id)
+
+
+def role_node_factory(o: dbm.Role) -> "rbactypes.Role":
+    return rbactypes.Role(db_resource=o, id=o.id)
 
 
 class CabinetLoader(EntityLoader[dbm.Cabinet, "types.Cabinet"]):
@@ -105,3 +113,15 @@ class ComponentConnectionFactory(
             )
             for k in keys
         ]
+
+
+class PermissionConnectionFactory(
+    EntityConnectionFactory[dbm.Permission, "rbactypes.Permission", None]
+):
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Permission, permission_node_factory)
+
+
+class RoleConnectionFactory(EntityConnectionFactory[dbm.Role, "rbactypes.Role", None]):
+    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+        super().__init__(session, session_lock, dbm.Role, role_node_factory)
