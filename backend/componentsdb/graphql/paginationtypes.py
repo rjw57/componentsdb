@@ -45,12 +45,11 @@ class PageInfo:
 @strawberry.type
 class Connection(Generic[_N]):
     loader_key: strawberry.Private[Any]
-    pagination_params: strawberry.Private[PaginationParams]
-    edges_loader: strawberry.Private[DataLoader[tuple[Any, PaginationParams], LoadEdgesResult[_N]]]
+    edges_loader: strawberry.Private[DataLoader[Any, LoadEdgesResult[_N]]]
     count_loader: strawberry.Private[DataLoader[Any, int]]
 
     async def _get_edges(self) -> LoadEdgesResult[_N]:
-        return await self.edges_loader.load((self.loader_key, self.pagination_params))
+        return await self.edges_loader.load(self.loader_key)
 
     @strawberry.field
     async def count(self) -> int:

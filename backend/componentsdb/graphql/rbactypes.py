@@ -28,8 +28,8 @@ class RBACQueries:
     ) -> Connection[Permission]:
         return (
             context.get_db(info.context)
-            .permission_connection()
-            .make_connection(None, PaginationParams(after=after, first=first))
+            .permission_connection(PaginationParams(after=after, first=first))
+            .make_connection(None)
         )
 
     @strawberry.field
@@ -38,6 +38,6 @@ class RBACQueries:
     ) -> Connection[Role]:
         return (
             context.get_db(info.context)
-            .role_connection()
-            .make_connection(None, PaginationParams(after=after, first=first))
+            .role_connection(PaginationParams(after=after, first=first))
+            .make_connection(None)
         )

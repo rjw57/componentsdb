@@ -14,6 +14,7 @@ from .genericloaders import (
     OneToManyRelationshipConnectionFactory,
     RelatedEntityLoader,
 )
+from .paginationtypes import PaginationParams
 
 
 def cabinet_node_factory(o: dbm.Cabinet) -> "types.Cabinet":
@@ -49,8 +50,15 @@ def role_node_factory(o: dbm.Role) -> "rbactypes.Role":
 class ComponentConnectionFactory(
     EntityConnectionFactory[dbm.Component, "types.Component", "types.ComponentQueryKey"]
 ):
-    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
-        super().__init__(session, session_lock, dbm.Component, component_node_factory)
+    def __init__(
+        self,
+        session: AsyncSession,
+        session_lock: asyncio.Lock,
+        pagination_params: PaginationParams,
+    ):
+        super().__init__(
+            session, session_lock, pagination_params, dbm.Component, component_node_factory
+        )
 
     def _similarity(self, key: "types.ComponentQueryKey"):
         return sa.func.word_similarity(sa.func.lower(key.search), dbm.Component.search_text)
@@ -96,17 +104,20 @@ class DbContext:
         return RelatedEntityLoader[_R, _N](self.db_session, self.db_lock, mapper, node_factory)
 
     def _make_entity_connection_factory(
-        self, mapper: Any, node_factory: Callable[[_R], _N]
+        self, pagination_params: PaginationParams, mapper: Any, node_factory: Callable[[_R], _N]
     ) -> EntityConnectionFactory[_R, _N, _K]:
         return EntityConnectionFactory[_R, _N, _K](
-            self.db_session, self.db_lock, mapper, node_factory
+            self.db_session, self.db_lock, pagination_params, mapper, node_factory
         )
 
     def _make_one_to_many_relationship_connection_factory(
-        self, relationship: Any, node_factory: Callable[[_R], _N]
+        self,
+        pagination_params: PaginationParams,
+        relationship: Any,
+        node_factory: Callable[[_R], _N],
     ) -> OneToManyRelationshipConnectionFactory[_R, _N]:
         return OneToManyRelationshipConnectionFactory[_R, _N](
-            self.db_session, self.db_lock, relationship, node_factory
+            self.db_session, self.db_lock, pagination_params, relationship, node_factory
         )
 
     @cache
@@ -126,46 +137,60 @@ class DbContext:
         return self._make_related_entity_loader(dbm.Component, component_node_factory)
 
     @cache
-    def cabinet_connection(self) -> EntityConnectionFactory[dbm.Cabinet, "types.Cabinet", None]:
-        return self._make_entity_connection_factory(dbm.Cabinet, cabinet_node_factory)
+    def cabinet_connection(
+        self, pagination_params: PaginationParams
+    ) -> EntityConnectionFactory[dbm.Cabinet, "types.Cabinet", None]:
+        return self._make_entity_connection_factory(
+            pagination_params, dbm.Cabinet, cabinet_node_factory
+        )
 
     @cache
     def cabinet_drawer_connection(
         self,
+        pagination_params: PaginationParams,
     ) -> OneToManyRelationshipConnectionFactory[dbm.Drawer, "types.Drawer"]:
         return self._make_one_to_many_relationship_connection_factory(
-            dbm.Cabinet.drawers, drawer_node_factory
+            pagination_params, dbm.Cabinet.drawers, drawer_node_factory
         )
 
     @cache
     def drawer_collection_connection(
         self,
+        pagination_params: PaginationParams,
     ) -> OneToManyRelationshipConnectionFactory[dbm.Collection, "types.Collection"]:
         return self._make_one_to_many_relationship_connection_factory(
-            dbm.Drawer.collections, collection_node_factory
+            pagination_params, dbm.Drawer.collections, collection_node_factory
         )
 
     @cache
     def component_collection_connection(
         self,
+        pagination_params: PaginationParams,
     ) -> OneToManyRelationshipConnectionFactory[dbm.Collection, "types.Collection"]:
         return self._make_one_to_many_relationship_connection_factory(
-            dbm.Component.collections, collection_node_factory
+            pagination_params, dbm.Component.collections, collection_node_factory
         )
 
     @cache
-    def component_connection(self) -> ComponentConnectionFactory:
-        return ComponentConnectionFactory(self.db_session, self.db_lock)
+    def component_connection(
+        self, pagination_params: PaginationParams
+    ) -> ComponentConnectionFactory:
+        return ComponentConnectionFactory(self.db_session, self.db_lock, pagination_params)
 
     @cache
     def permission_connection(
         self,
+        pagination_params: PaginationParams,
     ) -> EntityConnectionFactory[dbm.Permission, "rbactypes.Permission", None]:
-        return self._make_entity_connection_factory(dbm.Permission, permission_node_factory)
+        return self._make_entity_connection_factory(
+            pagination_params, dbm.Permission, permission_node_factory
+        )
 
     @cache
-    def role_connection(self) -> EntityConnectionFactory[dbm.Role, "rbactypes.Role", None]:
-        return self._make_entity_connection_factory(dbm.Role, role_node_factory)
+    def role_connection(
+        self, pagination_params: PaginationParams
+    ) -> EntityConnectionFactory[dbm.Role, "rbactypes.Role", None]:
+        return self._make_entity_connection_factory(pagination_params, dbm.Role, role_node_factory)
 
 
 def make_context(

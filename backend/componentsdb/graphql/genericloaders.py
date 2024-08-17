@@ -84,12 +84,19 @@ def cursor_from_uuid(uuid_: UUID) -> str:
 class ConnectionFactory(Generic[_K, _N], metaclass=ABCMeta):
     _session: AsyncSession
     _session_lock: asyncio.Lock
-    _edges_loader: DataLoader[tuple[_K, PaginationParams], LoadEdgesResult[_N]]
+    _pagination_params: PaginationParams
+    _edges_loader: DataLoader[_K, LoadEdgesResult[_N]]
     _count_loader: DataLoader[_K, int]
 
-    def __init__(self, session: AsyncSession, session_lock: asyncio.Lock):
+    def __init__(
+        self,
+        session: AsyncSession,
+        session_lock: asyncio.Lock,
+        pagination_params: PaginationParams,
+    ):
         self._session = session
         self._session_lock = session_lock
+        self._pagination_params = pagination_params
         self._edges_loader = DataLoader(load_fn=self._load_edges)
         self._count_loader = DataLoader(load_fn=self._load_counts)
 
@@ -99,18 +106,15 @@ class ConnectionFactory(Generic[_K, _N], metaclass=ABCMeta):
     def entity_key_from_cursor(self, cursor: str) -> Any:
         return uuid_from_cursor(cursor)
 
-    def make_connection(self, key: _K, pagination_params: PaginationParams) -> Connection[_N]:
+    def make_connection(self, key: _K) -> Connection[_N]:
         return Connection[_N](
             loader_key=key,
-            pagination_params=pagination_params,
             edges_loader=self._edges_loader,
             count_loader=self._count_loader,
         )
 
     @abstractmethod
-    async def _load_edges(
-        self, keys: Sequence[tuple[_K, PaginationParams]]
-    ) -> Sequence[LoadEdgesResult[_N]]:
+    async def _load_edges(self, keys: Sequence[_K]) -> Sequence[LoadEdgesResult[_N]]:
         pass  # pragma: no cover
 
     @abstractmethod
@@ -132,10 +136,11 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         self,
         session: AsyncSession,
         session_lock: asyncio.Lock,
+        pagination_params: PaginationParams,
         relationship: Any,
         node_factory: Callable[[_R], _N],
     ):
-        super().__init__(session, session_lock)
+        super().__init__(session, session_lock, pagination_params)
         self.relationship = sa.inspect(relationship)
         assert isinstance(self.relationship, sa.orm.QueryableAttribute)
         assert isinstance(self.relationship.property, sa.orm.RelationshipProperty)
@@ -144,14 +149,13 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         self.foreign_key_column = self.relationship.property.local_remote_pairs[0][1]
         self.node_factory = node_factory
 
-    async def _load_edges(
-        self, keys: Sequence[tuple[int, PaginationParams]]
-    ) -> Sequence[LoadEdgesResult[_N]]:
+    async def _load_edges(self, keys: Sequence[int]) -> Sequence[LoadEdgesResult[_N]]:
         if len(keys) == 0:
             return []
 
+        p = self._pagination_params
         sub_stmts: list[sa.Select] = []
-        for key_idx, (entity_id, p) in enumerate(keys):
+        for key_idx, entity_id in enumerate(keys):
             first = max(1, p.first) if p.first is not None else DEFAULT_LIMIT
             stmt = sa.select(self.entity_model, sa.literal(key_idx).label("key_idx")).where(
                 self.foreign_key_column == entity_id
@@ -230,10 +234,11 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
         self,
         session: AsyncSession,
         session_lock: asyncio.Lock,
+        pagination_params: PaginationParams,
         mapper: Any,
         node_factory: Callable[[_R], _N],
     ):
-        super().__init__(session, session_lock)
+        super().__init__(session, session_lock, pagination_params)
         self.model = sa.inspect(mapper).entity
         self.node_factory = node_factory
 
@@ -249,29 +254,24 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
         "For each key, filter the select statement passed to match the required key."
         return [stmt for _ in keys]
 
-    async def _load_edges(
-        self, keys: Sequence[tuple[_K, PaginationParams]]
-    ) -> Sequence[LoadEdgesResult[_N]]:
+    async def _load_edges(self, keys: Sequence[_K]) -> Sequence[LoadEdgesResult[_N]]:
         rvs: list[LoadEdgesResult[_N]] = []
 
-        keys_only = [k for k, _ in keys]
-        filtered_selects = self.filter(keys_only, sa.select(self.model))
-        ordering_keys = self.ordering_keys(keys_only)
+        filtered_selects = self.filter(keys, sa.select(self.model))
+        ordering_keys = self.ordering_keys(keys)
 
-        for (key, pagination_params), filtered_stmt, ordering_key in zip(
-            keys, filtered_selects, ordering_keys
-        ):
+        for key, filtered_stmt, ordering_key in zip(keys, filtered_selects, ordering_keys):
             paginated_stmt = filtered_stmt
-            if pagination_params.after is not None:
+            if self._pagination_params.after is not None:
                 paginated_stmt = select_beyond(
                     self.model,
-                    self.entity_key_from_cursor(pagination_params.after),
+                    self.entity_key_from_cursor(self._pagination_params.after),
                     base_select=paginated_stmt,
                     ordering_key=ordering_key,
                 )
             first_limit = (
-                max(1, pagination_params.first)
-                if pagination_params.first is not None
+                max(1, self._pagination_params.first)
+                if self._pagination_params.first is not None
                 else DEFAULT_LIMIT
             )
             paginated_stmt = (

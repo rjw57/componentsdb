@@ -20,8 +20,8 @@ class Cabinet(Node):
     ) -> "Connection[Drawer]":
         return (
             context.get_db(info.context)
-            .cabinet_drawer_connection()
-            .make_connection(self.db_resource.id, PaginationParams(after=after, first=first))
+            .cabinet_drawer_connection(PaginationParams(after=after, first=first))
+            .make_connection(self.db_resource.id)
         )
 
 
@@ -36,8 +36,8 @@ class Drawer(Node):
     ) -> "Connection[Collection]":
         return (
             context.get_db(info.context)
-            .drawer_collection_connection()
-            .make_connection(self.db_resource.id, PaginationParams(after=after, first=first))
+            .drawer_collection_connection(PaginationParams(after=after, first=first))
+            .make_connection(self.db_resource.id)
         )
 
     @strawberry.field
@@ -78,8 +78,8 @@ class Component(Node):
     ) -> "Connection[Collection]":
         return (
             context.get_db(info.context)
-            .component_collection_connection()
-            .make_connection(self.db_resource.id, PaginationParams(after=after, first=first))
+            .component_collection_connection(PaginationParams(after=after, first=first))
+            .make_connection(self.db_resource.id)
         )
 
 
@@ -103,8 +103,8 @@ class Query:
     ) -> Connection[Cabinet]:
         return (
             context.get_db(info.context)
-            .cabinet_connection()
-            .make_connection(None, PaginationParams(after=after, first=first))
+            .cabinet_connection(PaginationParams(after=after, first=first))
+            .make_connection(None)
         )
 
     @strawberry.field
@@ -121,10 +121,8 @@ class Query:
     ) -> Connection[Component]:
         return (
             context.get_db(info.context)
-            .component_connection()
-            .make_connection(
-                ComponentQueryKey(search=search), PaginationParams(after=after, first=first)
-            )
+            .component_connection(PaginationParams(after=after, first=first))
+            .make_connection(ComponentQueryKey(search=search))
         )
 
 
