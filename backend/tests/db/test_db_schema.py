@@ -45,10 +45,7 @@ async def test_resource_at_fields_default(table: str, db_engine: AsyncEngine, fa
     async with db_engine.connect() as conn:
         created_at, updated_at = (
             await conn.execute(
-                text(
-                    f"SELECT created_at, updated_at FROM {
-                        table} ORDER BY id ASC LIMIT 1"
-                )
+                text(f"SELECT created_at, updated_at FROM {table} ORDER BY id ASC LIMIT 1")
             )
         ).one()
         assert created_at is not None
@@ -115,10 +112,7 @@ async def test_updated_at_updated(table: str, fake_items, faker: Faker, db_engin
     async with db_engine.connect() as conn:
         created_at, updated_at = (
             await conn.execute(
-                text(
-                    f"SELECT created_at, updated_at FROM {
-                        table} WHERE id = :id"
-                ),
+                text(f"SELECT created_at, updated_at FROM {table} WHERE id = :id"),
                 {"id": id},
             )
         ).one()
