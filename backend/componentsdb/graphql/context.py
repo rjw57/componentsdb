@@ -1,6 +1,6 @@
 import asyncio
 from functools import cached_property
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,3 +64,10 @@ def make_context(
         "authentication_provider": authentication_provider,
         "authenticated_user": authenticated_user,
     }
+
+
+def get_db(context_: dict[str, Any]) -> DbContext:
+    db = context_.get("db")
+    if db is None or not isinstance(db, DbContext):
+        raise ValueError("context has no DbContext instance available via the 'db' key")
+    return db

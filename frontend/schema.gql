@@ -128,15 +128,30 @@ type PageInfo {
   hasNextPage: Boolean!
 }
 
+type Permission {
+  id: ID!
+}
+
 type Query {
   auth: AuthQueries!
+  rbac: RBACQueries!
   cabinets(after: String = null, first: Int = null): CabinetConnection!
   cabinet(id: ID!): Cabinet
   components(search: String = null, after: String = null, first: Int = null): ComponentConnection!
 }
 
+type RBACQueries {
+  permissions: [Permission!]!
+  roles: [Role!]!
+}
+
 input RefreshCredentialsInput {
   refreshToken: String!
+}
+
+type Role {
+  id: ID!
+  permissions: [Permission!]!
 }
 
 type User {

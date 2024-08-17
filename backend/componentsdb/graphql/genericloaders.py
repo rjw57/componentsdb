@@ -35,16 +35,18 @@ class SelectDirection(enum.Enum):
     AFTER = enum.auto()
 
 
-def select_beyond_uuid(
+def select_beyond(
     model: type[_R],
-    uuid: UUID,
+    id: Any,
     *,
     direction: SelectDirection = SelectDirection.AFTER,
     base_select: Optional[sa.Select[tuple[_R]]] = None,
     ordering_key: Optional[sa.Numeric] = None,
+    id_column: Optional[sa.Column] = None,
 ) -> sa.Select[tuple[_R]]:
-    id_subquery = sa.select(model.id).where(model.uuid == uuid).scalar_subquery()
-    ok_subquery = sa.select(ordering_key).where(model.uuid == uuid).scalar_subquery()
+    id_column = id_column if id_column is not None else model.uuid
+    id_subquery = sa.select(model.id).where(id_column == id).scalar_subquery()
+    ok_subquery = sa.select(ordering_key).where(id_column == id).scalar_subquery()
     base_select = base_select if base_select is not None else sa.select(model)
     if ordering_key is not None and ordering_key != model.id:
         # The logic here is that we generally want the rows *after* the one matching the ordering
@@ -90,6 +92,12 @@ class ConnectionFactory(Generic[_K, _N], metaclass=ABCMeta):
         self._session_lock = session_lock
         self._edges_loader = DataLoader(load_fn=self._load_edges)
         self._count_loader = DataLoader(load_fn=self._load_counts)
+
+    def cursor_from_entity(self, entity: Any) -> str:
+        return cursor_from_uuid(entity.uuid)
+
+    def entity_key_from_cursor(self, cursor: str) -> Any:
+        return uuid_from_cursor(cursor)
 
     def make_connection(self, key: _K, pagination_params: PaginationParams) -> Connection[_N]:
         return Connection[_N](
@@ -149,8 +157,8 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
                 self.foreign_key_column == entity_id
             )
             if p.after is not None:
-                stmt = select_beyond_uuid(
-                    self.entity_model, uuid_from_cursor(p.after), base_select=stmt
+                stmt = select_beyond(
+                    self.entity_model, self.entity_key_from_cursor(p.after), base_select=stmt
                 )
             stmt = stmt.order_by(self.entity_model.id.asc()).limit(first)
             sub_stmts.append(stmt)
@@ -168,12 +176,12 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         db_entity_pages = [db_entities_by_key_idx[key_idx] for key_idx, _ in enumerate(keys)]
         has_more_stmts = [
             sa.select(
-                select_beyond_uuid(
+                select_beyond(
                     self.entity_model,
                     entities[0].uuid if len(entities) > 0 else None,
                     direction=SelectDirection.BEFORE,
                 ).exists(),
-                select_beyond_uuid(
+                select_beyond(
                     self.entity_model,
                     entities[-1].uuid if len(entities) > 0 else None,
                     direction=SelectDirection.AFTER,
@@ -189,7 +197,7 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
             LoadEdgesResult(
                 edges=[
                     Edge(
-                        cursor=cursor_from_uuid(scalar.uuid),
+                        cursor=self.cursor_from_entity(scalar),
                         node=self.node_factory(scalar),
                     )
                     for scalar in db_entities_by_key_idx[key_idx]
@@ -255,9 +263,9 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
         ):
             paginated_stmt = filtered_stmt
             if pagination_params.after is not None:
-                paginated_stmt = select_beyond_uuid(
+                paginated_stmt = select_beyond(
                     self.model,
-                    uuid_from_cursor(pagination_params.after),
+                    self.entity_key_from_cursor(pagination_params.after),
                     base_select=paginated_stmt,
                     ordering_key=ordering_key,
                 )
@@ -278,14 +286,14 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
                     has_previous_page, has_next_page = (
                         await self._session.execute(
                             sa.select(
-                                select_beyond_uuid(
+                                select_beyond(
                                     self.model,
                                     entities[0].uuid,
                                     base_select=filtered_stmt,
                                     ordering_key=ordering_key,
                                     direction=SelectDirection.BEFORE,
                                 ).exists(),
-                                select_beyond_uuid(
+                                select_beyond(
                                     self.model,
                                     entities[-1].uuid,
                                     base_select=filtered_stmt,
@@ -303,7 +311,7 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
                 LoadEdgesResult(
                     edges=[
                         Edge(
-                            cursor=cursor_from_uuid(c.uuid),
+                            cursor=self.cursor_from_entity(c),
                             node=self.node_factory(c),
                         )
                         for c in entities

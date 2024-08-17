@@ -227,6 +227,13 @@ class Role(Base):
 
     name: Mapped[str] = mapped_column(primary_key=True)
 
+    permissions: Mapped[list["Permission"]] = relationship(
+        secondary=lambda: RolePermissionBinding.__table__,
+        repr=False,
+        default_factory=list,
+        cascade="all, delete",
+    )
+
 
 class Permission(Base):
     __tablename__ = "permissions"
@@ -241,9 +248,6 @@ class RolePermissionBinding(Base):
     permission_name: Mapped[str] = mapped_column(
         sa.ForeignKey("permissions.name"), primary_key=True
     )
-
-    role: Mapped[Role] = relationship(cascade="all, delete")
-    permission: Mapped[Permission] = relationship(cascade="all, delete")
 
 
 class UserGlobalRoleBinding(Base, _TimestampsMixin):
