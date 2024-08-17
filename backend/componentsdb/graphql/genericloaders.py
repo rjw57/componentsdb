@@ -153,31 +153,35 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
         if len(keys) == 0:
             return []
 
-        p = self._pagination_params
-        sub_stmts: list[sa.Select] = []
-        for key_idx, entity_id in enumerate(keys):
-            first = max(1, p.first) if p.first is not None else DEFAULT_LIMIT
-            stmt = sa.select(self.entity_model, sa.literal(key_idx).label("key_idx")).where(
-                self.foreign_key_column == entity_id
-            )
-            if p.after is not None:
-                stmt = select_beyond(
-                    self.entity_model, self.entity_key_from_cursor(p.after), base_select=stmt
-                )
-            stmt = stmt.order_by(self.entity_model.id.asc()).limit(first)
-            sub_stmts.append(stmt)
-        stmt = (
-            sa.select(self.entity_model, sa.literal_column("key_idx"))
-            .from_statement(sa.union_all(*sub_stmts))
-            .options(raiseload("*"))
+        first = (
+            max(1, self._pagination_params.first)
+            if self._pagination_params.first is not None
+            else DEFAULT_LIMIT
         )
+        subq = sa.select(
+            self.entity_model.id.label("entity_id"),
+            self.foreign_key_column.label("key"),
+            sa.func.row_number()
+            .over(partition_by=self.foreign_key_column, order_by=self.entity_model.id)
+            .label("rownum"),
+        )
+        if self._pagination_params.after is not None:
+            subq = select_beyond(
+                self.entity_model,
+                self.entity_key_from_cursor(self._pagination_params.after),
+                base_select=subq,
+            )
+        subq = subq.subquery()
 
-        db_entities_by_key_idx = defaultdict[int, list[_R]](list)
+        stmt = sa.select(self.entity_model, subq.c.key).where(
+            subq.c.rownum <= first, subq.c.key.in_(keys), self.entity_model.id == subq.c.entity_id
+        )
+        db_entities_by_key = defaultdict[int, list[_R]](list)
         async with self._session_lock:
-            for d, key_idx in await self._session.execute(stmt):
-                db_entities_by_key_idx[key_idx].append(d)
+            for d, k in await self._session.execute(stmt):
+                db_entities_by_key[k].append(d)
 
-        db_entity_pages = [db_entities_by_key_idx[key_idx] for key_idx, _ in enumerate(keys)]
+        db_entity_pages = [db_entities_by_key[key] for key in keys]
         has_more_stmts = [
             sa.select(
                 select_beyond(
@@ -204,12 +208,12 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
                         cursor=self.cursor_from_entity(scalar),
                         node=self.node_factory(scalar),
                     )
-                    for scalar in db_entities_by_key_idx[key_idx]
+                    for scalar in page
                 ],
                 has_next_page=has_next_page,
                 has_previous_page=has_previous_page,
             )
-            for key_idx, (has_previous_page, has_next_page) in enumerate(has_more_results)
+            for page, (has_previous_page, has_next_page) in zip(db_entity_pages, has_more_results)
         ]
 
     async def _load_counts(self, keys: Sequence[int]) -> Sequence[int]:
