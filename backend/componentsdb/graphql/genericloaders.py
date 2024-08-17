@@ -10,6 +10,7 @@ import sqlalchemy as sa
 import strawberry
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import raiseload
 from strawberry.dataloader import DataLoader
 
 from ..db import models as dbm
@@ -153,8 +154,10 @@ class OneToManyRelationshipConnectionFactory(Generic[_R, _N], ConnectionFactory[
                 )
             stmt = stmt.order_by(self.entity_model.id.asc()).limit(first)
             sub_stmts.append(stmt)
-        stmt = sa.select(self.entity_model, sa.literal_column("key_idx")).from_statement(
-            sa.union_all(*sub_stmts)
+        stmt = (
+            sa.select(self.entity_model, sa.literal_column("key_idx"))
+            .from_statement(sa.union_all(*sub_stmts))
+            .options(raiseload("*"))
         )
 
         db_entities_by_key_idx = defaultdict[int, list[_R]](list)
@@ -263,9 +266,11 @@ class EntityConnectionFactory(Generic[_R, _N, _K], ConnectionFactory[_K, _N]):
                 if pagination_params.first is not None
                 else DEFAULT_LIMIT
             )
-            paginated_stmt = paginated_stmt.order_by(
-                ordering_key.asc(), self.model.id.asc()
-            ).limit(first_limit)
+            paginated_stmt = (
+                paginated_stmt.order_by(ordering_key.asc(), self.model.id.asc())
+                .limit(first_limit)
+                .options(raiseload("*"))
+            )
 
             async with self._session_lock:
                 entities = list((await self._session.execute(paginated_stmt)).scalars())
@@ -345,7 +350,12 @@ class RelatedEntityLoader(Generic[_R, _N], DataLoader[int, _N]):
         self.node_factory = node_factory
 
     async def _load(self, keys: Sequence[int]) -> Sequence[_N]:
-        stmt = sa.select(self.model).where(self.model.id.in_(keys)).order_by(self.model.id.asc())
+        stmt = (
+            sa.select(self.model)
+            .where(self.model.id.in_(keys))
+            .order_by(self.model.id.asc())
+            .options(raiseload("*"))
+        )
         async with self.session_lock:
             entities_by_key = {o.id: o for o in (await self.session.execute(stmt)).scalars()}
         return [self.node_factory(entities_by_key[k]) for k in keys]
@@ -376,7 +386,12 @@ class EntityLoader(Generic[_R, _N], DataLoader[strawberry.ID, Optional[_N]]):
         self.node_factory = node_factory
 
     async def _load(self, keys: list[strawberry.ID]) -> Sequence[Optional[_N]]:
-        stmt = sa.select(self.model).where(self.model.uuid.in_(keys)).order_by(self.model.id.asc())
+        stmt = (
+            sa.select(self.model)
+            .where(self.model.uuid.in_(keys))
+            .order_by(self.model.id.asc())
+            .options(raiseload("*"))
+        )
         async with self.session_lock:
             entities_by_key = {
                 str(o.uuid): o for o in (await self.session.execute(stmt)).scalars()

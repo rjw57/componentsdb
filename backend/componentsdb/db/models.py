@@ -5,36 +5,43 @@ SQLAlchemy models defining the database schema.
 
 import datetime
 import uuid as uuid_
-from dataclasses import dataclass
 from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    MappedAsDataclass,
+    mapped_column,
+    relationship,
+)
 
 
-class Base(AsyncAttrs, DeclarativeBase):
+# The 'type:ignore' is required because mypy doesn't understand that "kw_only" can be passed to
+# MappedAsDataclass.
+class Base(MappedAsDataclass, AsyncAttrs, DeclarativeBase, kw_only=True):  # type:ignore[call-arg]
     pass
 
 
-class _IdMixin(object):
-    id: Mapped[int] = mapped_column(sa.BigInteger, primary_key=True)
+class _IdMixin(MappedAsDataclass):
+    id: Mapped[int] = mapped_column(sa.BigInteger, primary_key=True, default=None)
 
 
-class _UUIDMixin(object):
+class _UUIDMixin(MappedAsDataclass):
     uuid: Mapped[uuid_.UUID] = mapped_column(
-        sa.UUID, nullable=False, server_default=sa.Function("gen_random_uuid")
+        sa.UUID, nullable=False, server_default=sa.Function("gen_random_uuid"), default=None
     )
 
 
-class _TimestampsMixin(object):
+class _TimestampsMixin(MappedAsDataclass):
     created_at: Mapped[datetime.datetime] = mapped_column(
-        sa.DateTime(timezone=True), server_default=sa.Function("now")
+        sa.DateTime(timezone=True), server_default=sa.Function("now"), default=None
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        sa.DateTime(timezone=True), server_default=sa.Function("now")
+        sa.DateTime(timezone=True), server_default=sa.Function("now"), default=None
     )
 
 
@@ -42,29 +49,35 @@ class ResourceMixin(_IdMixin, _UUIDMixin, _TimestampsMixin):
     pass
 
 
-@dataclass
 class Cabinet(Base, ResourceMixin):
     __tablename__ = "cabinets"
 
     name: Mapped[str]
     drawers: Mapped[list["Drawer"]] = relationship(
-        lazy="raise", cascade="all, delete-orphan", back_populates="cabinet"
+        cascade="all, delete-orphan",
+        back_populates="cabinet",
+        default_factory=list,
+        repr=False,
     )
 
 
 sa.Index("idx_cabinets_uuid", Cabinet.uuid)
 
 
-@dataclass
 class Drawer(Base, ResourceMixin):
     __tablename__ = "drawers"
 
     label: Mapped[str]
-    cabinet_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("cabinets.id"))
+    cabinet_id: Mapped[int] = mapped_column(
+        sa.BigInteger, sa.ForeignKey("cabinets.id"), default=None
+    )
 
-    cabinet: Mapped[Cabinet] = relationship(lazy="raise", back_populates="drawers")
+    cabinet: Mapped[Cabinet] = relationship(back_populates="drawers", default=None, repr=False)
     collections: Mapped[list["Collection"]] = relationship(
-        lazy="raise", cascade="all, delete-orphan", back_populates="drawer"
+        cascade="all, delete-orphan",
+        back_populates="drawer",
+        default_factory=list,
+        repr=False,
     )
 
 
@@ -72,19 +85,20 @@ sa.Index("idx_drawers_uuid", Drawer.uuid)
 sa.Index("idx_drawers_cabinet", Drawer.cabinet_id)
 
 
-@dataclass
 class Component(Base, ResourceMixin):
     __tablename__ = "components"
 
     code: Mapped[str]
-    description: Mapped[Optional[str]]
-    datasheet_url: Mapped[Optional[str]]
+    description: Mapped[Optional[str]] = mapped_column(default=None)
+    datasheet_url: Mapped[Optional[str]] = mapped_column(default=None)
     search_text: Mapped[str] = mapped_column(
         sa.Computed("lower(coalesce(code, '') || coalesce(description, ''))"),
+        init=False,
+        repr=False,
     )
 
     collections: Mapped[list["Collection"]] = relationship(
-        cascade="all, delete-orphan", back_populates="component"
+        cascade="all, delete-orphan", back_populates="component", default_factory=list, repr=False
     )
 
 
@@ -99,17 +113,22 @@ sa.Index(
 )
 
 
-@dataclass
 class Collection(Base, ResourceMixin):
     __tablename__ = "collections"
     __table_args__ = (sa.CheckConstraint("count >= 0"),)
 
     count: Mapped[int]
-    drawer_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("drawers.id"))
-    component_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("components.id"))
+    drawer_id: Mapped[int] = mapped_column(
+        sa.BigInteger, sa.ForeignKey("drawers.id"), default=None
+    )
+    component_id: Mapped[int] = mapped_column(
+        sa.BigInteger, sa.ForeignKey("components.id"), default=None
+    )
 
-    drawer: Mapped[Drawer] = relationship(lazy="raise", back_populates="collections")
-    component: Mapped[Component] = relationship(lazy="raise", back_populates="collections")
+    drawer: Mapped[Drawer] = relationship(back_populates="collections", default=None, repr=False)
+    component: Mapped[Component] = relationship(
+        back_populates="collections", default=None, repr=False
+    )
 
 
 sa.Index("idx_collections_uuid", Collection.uuid)
@@ -117,64 +136,62 @@ sa.Index("idx_collections_drawer", Collection.drawer_id)
 sa.Index("idx_collections_component", Collection.component_id)
 
 
-@dataclass
 class User(Base, ResourceMixin):
     __tablename__ = "users"
 
-    email: Mapped[Optional[str]]
-    display_name: Mapped[str]
-    avatar_url: Mapped[Optional[str]]
+    email: Mapped[Optional[str]] = mapped_column(default=None)
+    display_name: Mapped[str] = mapped_column()
+    avatar_url: Mapped[Optional[str]] = mapped_column(default=None)
     email_verified: Mapped[bool] = mapped_column(server_default="f")
 
     federated_credentials: Mapped[list["FederatedUserCredential"]] = relationship(
-        cascade="all, delete-orphan", back_populates="user"
+        cascade="all, delete-orphan", back_populates="user", default_factory=list, repr=False
     )
 
 
 sa.Index("idx_users_uuid", User.uuid)
 
 
-@dataclass
 class AccessToken(Base, _TimestampsMixin):
     __tablename__ = "access_tokens"
 
     token: Mapped[str] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"), default=None)
     expires_at: Mapped[datetime.datetime] = mapped_column(sa.DateTime(timezone=True))
 
-    user: Mapped[User] = relationship(lazy="raise")
+    user: Mapped[User] = relationship(default=None)
 
 
 sa.Index("idx_access_tokens_expires_at", AccessToken.expires_at)
 
 
-@dataclass
 class RefreshToken(Base, _TimestampsMixin):
     __tablename__ = "refresh_tokens"
 
     token: Mapped[str] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"), default=None)
     expires_at: Mapped[datetime.datetime] = mapped_column(sa.DateTime(timezone=True))
     used_at: Mapped[Optional[datetime.datetime]] = mapped_column(
-        sa.DateTime(timezone=True), nullable=True
+        sa.DateTime(timezone=True), nullable=True, default=None
     )
 
-    user: Mapped[User] = relationship(lazy="raise")
+    user: Mapped[User] = relationship(default=None, repr=False)
 
 
 sa.Index("idx_refresh_tokens_expires_at", RefreshToken.expires_at)
 
 
-@dataclass
 class FederatedUserCredential(Base, ResourceMixin):
     __tablename__ = "federated_user_credentials"
 
     subject: Mapped[str]
     audience: Mapped[str]
     issuer: Mapped[str]
-    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(sa.BigInteger, sa.ForeignKey("users.id"), default=None)
 
-    user: Mapped[User] = relationship(lazy="raise", back_populates="federated_credentials")
+    user: Mapped[User] = relationship(
+        back_populates="federated_credentials", default=None, repr=False
+    )
 
 
 sa.Index("idx_federated_user_credentials_user", FederatedUserCredential.user_id)
@@ -187,12 +204,13 @@ sa.Index(
 )
 
 
-@dataclass
 class FederatedUserCredentialUse(Base, _IdMixin, _TimestampsMixin):
     __tablename__ = "federated_user_credential_uses"
 
     claims: Mapped[dict] = mapped_column(
-        MutableDict.as_mutable(postgresql.JSONB), server_default=sa.func.json_build_object()
+        MutableDict.as_mutable(postgresql.JSONB),
+        server_default=sa.func.json_build_object(),
+        default=None,
     )
 
 

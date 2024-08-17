@@ -11,6 +11,7 @@ from typing import Any, Optional
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import raiseload
 from sqlalchemy.sql.expression import bindparam
 
 from .db.models import (
@@ -159,7 +160,11 @@ class AuthenticationProvider:
         if user_id is None:
             raise InvalidRefreshTokenError("The refresh token could not be verified")
         return await self.create_user_credentials(
-            (await self.db_session.execute(sa.select(User).where(User.id == user_id))).scalar_one()
+            (
+                await self.db_session.execute(
+                    sa.select(User).where(User.id == user_id).options(raiseload("*"))
+                )
+            ).scalar_one()
         )
 
     async def authenticate_user_from_access_token(self, access_token: str) -> User:
@@ -182,6 +187,7 @@ class AuthenticationProvider:
                     AccessToken.expires_at >= sa.func.now(),
                     AccessToken.token == access_token,
                 )
+                .options(raiseload("*"))
             )
         ).scalar_one_or_none()
         if user is None:
@@ -293,6 +299,7 @@ class AuthenticationProvider:
                     FederatedUserCredential.issuer == claims["iss"],
                     FederatedUserCredential.subject == claims["sub"],
                 )
+                .options(raiseload("*"))
             )
         ).scalar_one_or_none()
 

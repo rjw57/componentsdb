@@ -5,6 +5,7 @@ import sqlalchemy as sa
 import typer
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy.orm import raiseload
 
 from ..db import models as dbm
 from ._db import db_session
@@ -23,6 +24,7 @@ async def _search(sqlalchemy_db_url: str, search: str):
             )
         )
         .order_by(dbm.User.id)
+        .options(raiseload("*"))
     )
 
     table = Table("Id", "Display name", "Email")
