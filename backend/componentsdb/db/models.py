@@ -274,3 +274,19 @@ class UserCabinetRoleBinding(Base, _TimestampsMixin):
     user: Mapped[User] = relationship(default=None, repr=False, cascade="all, delete")
     role: Mapped[Role] = relationship(default=None, repr=False, cascade="all, delete")
     cabinet: Mapped[Cabinet] = relationship(default=None, repr=False, cascade="all, delete")
+
+
+class UserRoleBinding(Base, _TimestampsMixin):
+    __tablename__ = "user_role_bindings"
+
+    user_id: Mapped[int] = mapped_column(
+        sa.BigInteger, sa.ForeignKey("users.id"), default=None, primary_key=True
+    )
+    role_id: Mapped[str] = mapped_column(sa.ForeignKey("roles.id"), default=None, primary_key=True)
+    target: Mapped[str] = mapped_column()
+
+    user: Mapped[User] = relationship(default=None, repr=False, cascade="all, delete")
+    role: Mapped[Role] = relationship(default=None, repr=False, cascade="all, delete")
+
+
+sa.Index("idx_use_role_binding_target", UserRoleBinding.target)
